@@ -1,5 +1,5 @@
 var REtoAST = require('./REtoAST.js');
-
+var automata = require('./automata.js').automata;
 // The RHS object which contains the functions
 function rhs(string) {
     this.version = "1.0.0";
