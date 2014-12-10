@@ -132,13 +132,63 @@ automata.ASTtoRE = function (ast) {
 			new_a.addTransition(s1, a.finalState, "_");
 			new_a.finalState = a.finalState;
 			return new_a;
-			break;
 		case "range":
-			break;
+			var result = new automata();
+    		var s1 = uniquegen();
+    		var s2 = uniquegen();
+    		result.setStartState(s1);
+    		result.setFinalState(s2);
+    		result.states.push(s1);
+    		result.states.push(s2);
+    		var from = ast.from.charCodeAt(0); var to = ast.to.charCodeAt(0);
+    		for (lp = from; lp <= to; lp ++){
+    			var a = this.ASTtoRE({type:"literal", val:String.fromCharCode(lp)});
+    			result.addTransition(s1, a.startState, "_");
+    			result.transitions = result.transitions.concat(a.transitions);
+    			result.states = result.states.concat(a.states);
+    			result.addTransition(a.finalState, s2, "_");
+    		}
+
+    		return result;
     	case "set":
-			break;
+    		var result = new automata();
+    		var s1 = uniquegen();
+    		var s2 = uniquegen();
+    		result.setStartState(s1);
+    		result.setFinalState(s2);
+    		result.states.push(s1);
+    		result.states.push(s2);
+    		for (lp = 0; lp < ast.set.length; lp++) {
+    			item = ast.set[lp];
+    			var a = this.ASTtoRE(item);
+    			result.addTransition(s1, a.startState, "_");
+    			result.transitions = result.transitions.concat(a.transitions);
+    			result.states = result.states.concat(a.states);
+    			result.addTransition(a.finalState, s2, "_");
+    		}
+    		return result;
+    	case "not-set":
+    		var result = new automata();
+    		var s1 = uniquegen();
+    		var s2 = uniquegen();
+    		result.setStartState(s1);
+    		result.states.push(s1);
+    		result.states.push(s2);
+    		for (lp = 0; lp < ast.set.length; lp++) {
+    			item = ast.set[lp];
+    			var a = this.ASTtoRE(item);
+    			result.addTransition(s1, a.startState, "_");
+    			result.transitions = result.transitions.concat(a.transitions);
+    			result.states = result.states.concat(a.states);
+    			result.addTransition(a.finalState, s2, "_");
+    		}
+    		result.addTransition(s1, s3, "_");
+    		var s3 = uniquegen();
+    		result.setFinalState(s3);
+    		return result;
+
 		default:
-			//throw Error("Unrecognized AST node ");
+			throw Error("Unrecognized AST node ");
 	}
 }
 
@@ -153,5 +203,33 @@ if (typeof(module)!== 'undefined') {
 	};
 }
 
+automata.intersect = function(a1, a2){
+	var result = new automata();
+	for (i = 0; i < a1.states.length; i++){
+		for (j = 0; j < a2. states.length; j++){
+			result.states.push("s"+a1.states[i].substring(1)+","+a2.states[i].substring(1));
+		}
+	}
+	for (i = 0; i < a1.transitions.length; i++){
+		for (j = 0; j < a2. transitions.length; j++){
+			if (a1.transitions[i].character === a2.transitions[j].character){
+				startState = "s"+a1.transitions[i].startState.substring(1)+","+a2.transitions[j].startState.substring(1);
+				endState = "s"+a1.transitions[i].endState.substring(1)+","+a2.transitions[j].endState.substring(1);
+				result.addTransition(startState, endState, a1.transitions[i].character);
+			}
+				
+		}
+	}
+	result.setStartState("s"+a1.startState.substring(1)+","+a2.startState.substring(1));
+	result.setFinalState("s"+a1.finalState.substring(1)+","+a2.finalState.substring(1));
+	return result;
+}
 
-console.log(automata.fromRE("a?"));
+automata.complement = function(a1){
+	var result = new automata();
+	result.setStartState(a1.startState);
+
+}
+
+
+console.log(automata.intersect(automata.fromRE("abe"), automata.fromRE("[b-d]")));
