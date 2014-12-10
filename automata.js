@@ -70,8 +70,28 @@ automata.ASTtoRE = function (ast) {
 			a3.setStartState(a1.startState);
 			a3.addTransition(a1.finalState, a2.startState, "_");
 			return a3;
-      	case "|":
-			break;
+    case "|":
+      var a1 = this.ASTtoRE(ast.arg1);
+      var a2 = this.ASTtoRE(ast.arg2);
+
+      var s1 = uniquegen();
+      var s2 = uniquegen();
+      var a = new automata();
+      a.states.push(s1);
+      a.setStartState(s1);
+
+      a.states = a.states.concat(a1.states);
+      a.states = a.states.concat(a2.states);
+      a.addTransition(s1, a1.startState, '_')
+      a.addTransition(s1, a2.startState, '_')
+      a.transitions = a.transitions.concat(a1.transitions);
+      a.transitions = a.transitions.concat(a2.transitions);
+      a.addTransition(a1.finalState, s2, '_')
+      a.addTransition(a2.finalState, s2, '_')
+      a.states.push(s2);
+      a.setFinalState(s2);
+
+		  return a
 		case "*":
 			break;
 		case "+":
@@ -99,4 +119,4 @@ if (typeof(module)!== 'undefined') {
 }
 
 
-console.log(automata.fromRE("ab"));
+console.log(automata.fromRE("a|b"));
