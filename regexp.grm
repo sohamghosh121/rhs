@@ -7,7 +7,6 @@ R "regexp"
   / term:TERM {return term; }
   /  "[^" set:SET+ "]" {return {type:"not-set", setset:setSET}; }
   /  "[" set:SET+ "]" {return {type:"set", set:set}; }
-  
 
 TERM
   =  term:ATOMICTERM "*" {return {type:"*", arg:term}; }

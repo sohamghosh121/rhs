@@ -210,9 +210,8 @@ rhs.range = function(c1, c2) {
 		c2_upperCase = isUpperCase(c2);
 		if ((c1_upperCase && c2_upperCase)||(!c1_upperCase && !c2_upperCase))
 			return new rhs(c1+"-"+c2)
-		else 
+		else
 			throw Error("Invalid arguments to range("+c1+","+c2+")");
-
 	}
 }
 
@@ -431,8 +430,6 @@ function intersectAST(ast1, ast2) {
 				case "literal":
 					return intersectAST(ast2, ast1);
 			}
-						
-			
 			return null;
 		case "+":
 			switch(ast2.type) {
@@ -493,7 +490,6 @@ function intersectAST(ast1, ast2) {
 							if (res !== null)
 								return {type:"repeat", arg:res, from:ast2.from, to:ast2.to};
 					}
-
 				}
 			return null;
 
@@ -543,7 +539,7 @@ function intersectAST(ast1, ast2) {
 				if (res.length > 0)
 					return {type:"set", set:res};
 			}
-			else if (ast2.type === "literal") 
+			else if (ast2.type === "literal")
 				return intersectAST(ast2, ast1);
 			else
 				return null;

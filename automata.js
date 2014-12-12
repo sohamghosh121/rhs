@@ -85,7 +85,6 @@ function uniquegen() {
 automata.prototype.merge = function(a) {
 	for (i=0; i<a.states.length; i++)
 		this.addState(a.states[i]);
-	
 	for (state in a.transitions){
 		for (character in a.transitions[state]){
 			for (i = 0; i < a.transitions[state][character].length; i++) {
@@ -137,7 +136,7 @@ automata.ASTtoRE = function (ast) {
 			a.addState(s2);
 			a.setFinalState(s2);
 		  return a
-		case '*': 
+		case '*':
 			var s1 = uniquegen();
 			var a = this.ASTtoRE(ast.arg);
 			var s2 = uniquegen();
@@ -249,31 +248,35 @@ function getEpsilonTransitionStates(transitions, state){
 
 automata.prototype.toDFA = function() {
 	startState = this.startState;
-	transitions = clone(this.transitions);
+  transitions = clone(this.transitions);
 	finalStates = this.finalState;
-	oldTransitions = clone(this.transitions);
 	var dfa = new automata();
-	dfa.addState(startState);
-	dfa.setStartState(startState);
-	for (startState in transitions){
-		for (character in transitions[startState]){
-			endStates = transitions[startState][character];
-			if (character !== epsilon){
-				endStates.forEach(function(endState){
-					transitions[startState][character] = transitions[startState][character].concat(getEpsilonTransitionStates(transitions, endState));
-				})
-				
-			}
+	bigStartState = [startState].concat(getEpsilonTransitionStates(transitions, startState)).join("_");
+	dfa.addState(bigStartState);
+  if (bigStartState !== startState)
+    transitions[bigStartState] = {};
+	dfa.setStartState(bigStartState);
+    	for (startState in transitions){
+	  	  for (character in transitions[startState]){
+			      endStates = transitions[startState][character];
+            if (character !== epsilon){
+                endStates.forEach(function(endState){
+                    transitions[startState][character] = transitions[startState][character].concat(getEpsilonTransitionStates(transitions, endState));
+              })
+            }
 
 		}
 	}
-	
+
+  console.log(transitions);
 	dfa.transitions = clone(transitions);
-	for (startState in dfa.transitions){
+  for (startState in dfa.transitions){
 		for (character in dfa.transitions[startState]){
 			endStates = dfa.transitions[startState][character];
 			if (character !== epsilon){
-				dfa.addState(endStates.join('_'));
+        newState = endStates.join('_');
+        console.log("added state: "+newState);
+				dfa.addState(newState);
 			}
 
 		}
@@ -281,15 +284,17 @@ automata.prototype.toDFA = function() {
 
 	//delete unnecessary transitions
 	for (s in dfa.transitions){
-		if (dfa.states.indexOf(s) == -1)
+		if (dfa.states.indexOf(s) == -1){
+      console.log(s)
 			delete dfa.transitions[s];
-		else
+    }
+		else {
 			dfa.transitions[s] = {};
+    }
 	}
 
 	for (s in dfa.transitions){
 		alphabet.forEach(function(c){
-			
 			powerset = s.split("_");
 			nextpowerset = [];
 			powerset.forEach(function(state){
@@ -299,7 +304,10 @@ automata.prototype.toDFA = function() {
 				}
 			});
 			if (nextpowerset.length > 0){
-				dfa.addTransition(s, nextpowerset.unique().join("_"), c);
+        newEndState =  nextpowerset.unique().join("_");
+        if (!dfa.states.contains(newEndState))
+          dfa.addState(newEndState);
+				dfa.addTransition(s, newEndState, c);
 			}
 		});
 	}
@@ -314,7 +322,7 @@ automata.prototype.toDFA = function() {
 
 
 	dfa.printDigraph();
-	console.log(dfa)
+//	console.log(dfa)
 	return dfa;
 }
 
@@ -363,8 +371,6 @@ automata.prototype.toRE = function(){
 					});
 				a.states.remove(qRip);
 				i++;
-				
-				
 				a.printDigraph();
 
 	});
@@ -382,7 +388,7 @@ automata.prototype.toRE = function(){
 				else
 					incomingTransitions.push(t);
 			}
-			else if (t.startState === state) 
+			else if (t.startState === state)
 				outgoingTransitions.push(t);
 		});
 		return {incoming: incomingTransitions, loop: loopTransitions, outgoing: outgoingTransitions};
@@ -415,9 +421,8 @@ automata.intersect = function(a1, a2){
 						endState = end_a1+'_'+ end_a2;
 						result.addTransition(startState, endState, char_a1);
 					}
-					
 				}
-			}	
+			}
 		}
 	}
 
@@ -447,8 +452,7 @@ automata.complement = function(a1){
 }
 
 automata.prototype.printDigraph = function(){
-	console.log(JSON.stringify(this, null, 4));
-	var a = this;
+  var a = this;
 	var digraph = 'digraph{\n';
 	digraph+="\t"+a.startState+" [shape=house];\n";
 	for (start in a.transitions){
@@ -456,7 +460,7 @@ automata.prototype.printDigraph = function(){
 			a.transitions[start][character].forEach(function (end){
 
 			if (character === ''){
-					digraph+= '\t'+start + ' -> '+ end + ';\n' 
+					digraph+= '\t'+start + ' -> '+ end + ';\n'
 			}
 			else {
 				digraph+= '\t'+start + ' -> '+ end + ' [label=\"'+ character+'\", weight=\"'+ character+'\"];\n' 
@@ -471,11 +475,21 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-var a = automata.fromRE('abc').printDigraph();
+//var a = automata.fromRE('a|c');
+//var a = automata.fromRE('(a|b)+bcd');
+
+var a = new automata();
+a.states = ["s0", "s1","s2","s3","s4","s5","s6","s7","s8","s9"];
+a.startState = "s0";
+a.finalState = ["s9"];
+a.transitions = {"s0": {"": ["s1", "s3"] }, "s1": {"b": ["s2"] }, "s3": {"a": ["s4"] }, "s2": { "": ["s5"] }, "s4": { "": ["s5"] }, "s5": { "": ["s0", "s6"] }, "s6": {"b": ["s7"]}, "s7": {"c": ["s8"]}, "s8": {"d": ["s9"] }, "s9": {} }
+//a.printDigraph();
+a.toDFA();
+//a.toDFA();
 //a.printDigraph()
-var b = automata.fromRE('abc');
+//var b = automata.fromRE('abc');
 //b.printDigraph();
 //automata.intersect(a, b).printDigraph();
-//console.log(getEpsilonTransitionStates(a.transitions, 's3'));
+//console.log(get""TransitionStates(a.transitions, 's3'));
 //console.log(JSON.stringify(a,null,4));
 //a.toDFA();
