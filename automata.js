@@ -456,19 +456,15 @@ automata.intersect = function(a1, a2){
 }
 
 automata.complement = function(a1){
-	var result = new automata();
-	result.states = a1.states;
-	result.addState('sf');
-	result.setStartState(a1.startState);
-	for (lp = 0; lp < result.states.length; lp++){
-		if (!(result.states[lp] in a1.finalState))
-			result.addFinalState(result.states[lp]);
-	}
-	result.transitions = a1.transitions;
-
-	for (lp = 0; lp < result.transitions.length; lp++){
-		//TODO: magic code
-	}
+	var result = a1.toDFA();
+	oldFinalStates = result.finalState;
+	result.finalState = [];
+	result.states.forEach(function(state){
+		if (!oldFinalStates.contains(state)){
+			result.addFinalState(state);
+		}
+	});
+	return result;
 }
 
 automata.prototype.printDigraph = function(){
@@ -498,24 +494,6 @@ automata.prototype.printDigraph = function(){
 
 var a = automata.fromRE("[abc]de");
 var b = automata.fromRE("(a|b)de");
-var c= automata.intersect(a, b);
+var c = automata.complement(a);
 console.log(c.finalState)
 c.printDigraph();
-
-
-
-/*
-var a = new automata();
-a.states = ["s0", "s1","s2","s3","s4","s5","s6","s7","s8","s9"];
-a.startState = "s0";
-a.finalState = ["s9"];
-a.transitions = {"s0": {"": ["s1", "s3"] }, "s1": {"b": ["s2"] }, "s3": {"a": ["s4"] }, "s2": { "": ["s5"] }, "s4": { "": ["s5"] }, "s5": { "": ["s0", "s6"] }, "s6": {"b": ["s7"]}, "s7": {"c": ["s8"]}, "s8": {"d": ["s9"] }, "s9": {} }
-
-
-
-a = automata.fromRE("(a|b)?bcd")
-a.printDigraph();
-*/
-
-//
-//a.toDFA();
