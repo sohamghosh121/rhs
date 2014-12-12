@@ -144,11 +144,14 @@ automata.ASTtoRE = function (ast) {
 			new_a.merge(a);
 			new_a.addState(s1);
 			new_a.setStartState(s1);
-			new_a.addTransition(s1, a.startState, epsilon);
-			new_a.addTransition(s1, s2, epsilon);
-			new_a.addTransition(a.getFinalState(), s1, epsilon);
 			new_a.setFinalState(s2);
 			new_a.addState(s2);
+
+			new_a.addTransition(s1, a.startState, epsilon);
+			new_a.addTransition(s1, s2, epsilon);
+			new_a.addTransition(a.getFinalState(), s2, epsilon);
+			new_a.addTransition(a.getFinalState(), s1, epsilon);
+			
 			return new_a;
 		case '+':
 			var s1 = uniquegen();
@@ -158,10 +161,11 @@ automata.ASTtoRE = function (ast) {
 			new_a.merge(a);
 			new_a.addState(s1);
 			new_a.setStartState(s1);
-			new_a.addTransition(s1, a.startState, epsilon);
-			new_a.addTransition(a.getFinalState(), s1, epsilon);
-			new_a.setFinalState(s2);
 			new_a.addState(s2);
+			new_a.setFinalState(s2);
+			new_a.addTransition(s1, a.startState, epsilon);
+			new_a.addTransition(a.getFinalState(), s2, epsilon);
+			new_a.addTransition(s2, s1, epsilon);
 			return new_a;
 			break;
 		case '?':
@@ -253,64 +257,79 @@ automata.prototype.toDFA = function() {
 	var dfa = new automata();
 	bigStartState = [startState].concat(getEpsilonTransitionStates(transitions, startState)).join("_");
 	dfa.addState(bigStartState);
-  if (bigStartState !== startState)
-    transitions[bigStartState] = {};
+	if (bigStartState !== startState)
+	transitions[bigStartState] = {};
 	dfa.setStartState(bigStartState);
-    	for (startState in transitions){
+		for (startState in transitions){
 	  	  for (character in transitions[startState]){
 			      endStates = transitions[startState][character];
-            if (character !== epsilon){
-                endStates.forEach(function(endState){
-                    transitions[startState][character] = transitions[startState][character].concat(getEpsilonTransitionStates(transitions, endState));
-              })
-            }
+	        if (character !== epsilon){
+	            endStates.forEach(function(endState){
+	                transitions[startState][character] = transitions[startState][character].concat(getEpsilonTransitionStates(transitions, endState));
+	          })
+	        }
 
 		}
 	}
-
-  console.log(transitions);
+/*
 	dfa.transitions = clone(transitions);
-  for (startState in dfa.transitions){
-		for (character in dfa.transitions[startState]){
-			endStates = dfa.transitions[startState][character];
+  	for (startState in dfa.transitions){
+  		//console.log(startState)
+  		//console.log(transitions[startState]);
+		for (character in transitions[startState]){
+			endStates = transitions[startState][character];
+		//	console.log(character);
 			if (character !== epsilon){
-        newState = endStates.join('_');
-        console.log("added state: "+newState);
+				//console.log(character)
+        		newState = endStates.join('_');
+        		//console.log("added state: "+newState);
 				dfa.addState(newState);
 			}
 
 		}
 	}
-
+*/
 	//delete unnecessary transitions
+	//console.log(dfa.states)
+
+
+
 	for (s in dfa.transitions){
 		if (dfa.states.indexOf(s) == -1){
-      console.log(s)
 			delete dfa.transitions[s];
-    }
+    	}
 		else {
 			dfa.transitions[s] = {};
-    }
+    	}
 	}
 
 	for (s in dfa.transitions){
+		addDFATransition(transitions, s);
+	}
+
+	function addDFATransition(transitions, state){
 		alphabet.forEach(function(c){
-			powerset = s.split("_");
+			powerset = state.split("_");
 			nextpowerset = [];
 			powerset.forEach(function(state){
 				if (transitions[state].hasOwnProperty(c)){
-					result = transitions[state][c];//.filter(function(s){return s.split("_").length == 1;});
+					result = transitions[state][c];
 					nextpowerset = nextpowerset.concat(result);
 				}
 			});
 			if (nextpowerset.length > 0){
-        newEndState =  nextpowerset.unique().join("_");
-        if (!dfa.states.contains(newEndState))
-          dfa.addState(newEndState);
-				dfa.addTransition(s, newEndState, c);
+		        newEndState =  nextpowerset.unique().join("_");//union of states it can possibly go to
+				dfa.addTransition(state, newEndState, c);
+		        if (!dfa.states.contains(newEndState)) {
+		      		dfa.addState(newEndState);
+		        	addDFATransition(transitions, newEndState);
+		        }
 			}
 		});
 	}
+
+
+	//To add final states
 	dfa.states.forEach(function(bigState){
 		bigState.split("_").forEach(function(state){
 			if (finalStates.indexOf(state) != -1){
@@ -321,8 +340,6 @@ automata.prototype.toDFA = function() {
 	})
 
 
-	dfa.printDigraph();
-//	console.log(dfa)
 	return dfa;
 }
 
@@ -402,6 +419,8 @@ if (typeof(module)!== 'undefined') {
 }
 
 automata.intersect = function(a1, a2){
+	a1 = a1.toDFA();
+	a2 = a2.toDFA();
 	var result = new automata();
 	result.setStartState(a1.startState+"_"+a2.startState);
 	result.setFinalState(a1.getFinalState()+"_"+a2.getFinalState());
@@ -427,11 +446,12 @@ automata.intersect = function(a1, a2){
 	}
 
 	result.setStartState(a1.startState+'_'+a2.startState);
-	result.setFinalState(a1.getFinalState()+'_'+a2.getFinalState());
-
-
-	console.log(result);
-
+	a1.finalState.forEach(function(a1_finalState){
+		a2.finalState.forEach(function(a2_finalState){
+			result.addFinalState(a1_finalState+'_'+a2_finalState);
+		})
+	})
+	
 	return result;
 }
 
@@ -475,21 +495,27 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-//var a = automata.fromRE('a|c');
-//var a = automata.fromRE('(a|b)+bcd');
 
+var a = automata.fromRE("[abc]de");
+var b = automata.fromRE("(a|b)de");
+var c= automata.intersect(a, b);
+console.log(c.finalState)
+c.printDigraph();
+
+
+
+/*
 var a = new automata();
 a.states = ["s0", "s1","s2","s3","s4","s5","s6","s7","s8","s9"];
 a.startState = "s0";
 a.finalState = ["s9"];
 a.transitions = {"s0": {"": ["s1", "s3"] }, "s1": {"b": ["s2"] }, "s3": {"a": ["s4"] }, "s2": { "": ["s5"] }, "s4": { "": ["s5"] }, "s5": { "": ["s0", "s6"] }, "s6": {"b": ["s7"]}, "s7": {"c": ["s8"]}, "s8": {"d": ["s9"] }, "s9": {} }
-//a.printDigraph();
-a.toDFA();
-//a.toDFA();
-//a.printDigraph()
-//var b = automata.fromRE('abc');
-//b.printDigraph();
-//automata.intersect(a, b).printDigraph();
-//console.log(get""TransitionStates(a.transitions, 's3'));
-//console.log(JSON.stringify(a,null,4));
+
+
+
+a = automata.fromRE("(a|b)?bcd")
+a.printDigraph();
+*/
+
+//
 //a.toDFA();
