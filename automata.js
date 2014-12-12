@@ -50,10 +50,9 @@ automata.prototype.addState = function(state) {
 automata.prototype.addTransition = function(startState, endState, character) {	
 	//console.log("Adding transition: "+startState+" -----"+character+"-----> "+endState)
 	//console.log(this);
-	if (this.transitions[startState].hasOwnProperty(character))
-		this.transitions[startState][character].push(endState);
-	else
-		this.transitions[startState][character] = [endState];
+	if (!this.transitions[startState].hasOwnProperty(character))
+		this.transitions[startState][character] = [];
+	this.transitions[startState][character].push(endState);
 }
 
 automata.prototype.setStartState = function(state) {
@@ -89,11 +88,12 @@ automata.prototype.merge = function(a) {
 	
 	for (state in a.transitions){
 		for (character in a.transitions[state]){
-			this.addTransition(state, a.transitions[state][character], character);
+			for (i = 0; i < a.transitions[state][character].length; i++) {
+				this.addTransition(state, a.transitions[state][character][i], character);
+			}
 		}
 	}
 	return this;
-	
 }
 
 
@@ -397,15 +397,13 @@ if (typeof(module)!== 'undefined') {
 
 automata.intersect = function(a1, a2){
 	var result = new automata();
-	result.setStartState(a1.startState+","+a2.startState);
-	result.setFinalState(a1.getFinalState()+","+a2.getFinalState());
+	result.setStartState(a1.startState+"_"+a2.startState);
+	result.setFinalState(a1.getFinalState()+"_"+a2.getFinalState());
 	for (i = 0; i < a1.states.length; i++){
 		for (j = 0; j < a2. states.length; j++){
-			result.addState(a1.states[i]+","+a2.states[i]);
+			result.addState(a1.states[i]+"_"+a2.states[j]);
 		}
 	}
-
-
 	for (var start_a1 in a1.transitions){
 		for (var char_a1 in a1.transitions[start_a1]){
 			end_a1 = a1.transitions[start_a1][char_a1];
@@ -413,9 +411,9 @@ automata.intersect = function(a1, a2){
 				for (var char_a2 in a2.transitions[start_a2]){
 					end_a2 = a2.transitions[start_a2][char_a2];
 					if (char_a1 === char_a2){
-						startState = start_a1+','+start_a2;
-						endState = end_a1+','+ end_a2;
-						//result.addTransition(startState, endState, char_a1);
+						startState = start_a1+'_'+start_a2;
+						endState = end_a1+'_'+ end_a2;
+						result.addTransition(startState, endState, char_a1);
 					}
 					
 				}
@@ -423,8 +421,12 @@ automata.intersect = function(a1, a2){
 		}
 	}
 
-	result.setStartState('s'+a1.startState.substring(1)+','+a2.startState.substring(1));
-	result.setFinalState('s'+a1.getFinalState().substring(1)+','+a2.getFinalState().substring(1));
+	result.setStartState(a1.startState+'_'+a2.startState);
+	result.setFinalState(a1.getFinalState()+'_'+a2.getFinalState());
+
+
+	console.log(result);
+
 	return result;
 }
 
@@ -445,14 +447,23 @@ automata.complement = function(a1){
 }
 
 automata.prototype.printDigraph = function(){
+	console.log(JSON.stringify(this, null, 4));
+	var a = this;
 	var digraph = 'digraph{\n';
-	for (start in this.transitions){
-		for (character in this.transitions[start]){
-			this.transitions[start][character].forEach(function (end){
-			if (character === '')
-				digraph+= '\t'+start + ' -> '+ end + ';\n' 
-			else
+	digraph+="\t"+a.startState+" [shape=house];\n";
+	for (start in a.transitions){
+		for (character in a.transitions[start]){
+			a.transitions[start][character].forEach(function (end){
+
+			if (character === ''){
+					digraph+= '\t'+start + ' -> '+ end + ';\n' 
+			}
+			else {
 				digraph+= '\t'+start + ' -> '+ end + ' [label=\"'+ character+'\", weight=\"'+ character+'\"];\n' 
+			}
+
+			if (a.finalState.contains(end))
+				digraph += '\t'+end+' [shape=doublecircle];\n';
 			});
 		}
 	}
@@ -460,7 +471,10 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-var a = automata.fromRE('(ae)|(bc)').printDigraph();
+var a = automata.fromRE('abc').printDigraph();
+//a.printDigraph()
+var b = automata.fromRE('abc');
+//b.printDigraph();
 //automata.intersect(a, b).printDigraph();
 //console.log(getEpsilonTransitionStates(a.transitions, 's3'));
 //console.log(JSON.stringify(a,null,4));
