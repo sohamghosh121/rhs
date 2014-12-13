@@ -35,6 +35,7 @@ function clone(source){
 	}
 	return destination;
 }
+
 function automata() {
 	this.states = [];
 	this.startState = '';
@@ -42,18 +43,55 @@ function automata() {
 	this.transitions = {}
 }
 
+
 automata.prototype.addState = function(state) {
 	this.states.push(state);
 	this.transitions[state] = {};
 }
 
-automata.prototype.addTransition = function(startState, endState, character) {	
-	//console.log("Adding transition: "+startState+" -----"+character+"-----> "+endState)
-	//console.log(this);
+automata.prototype.addTransition = function(startState, endState, character) {
+	//console.log("adding transition "+startState+" -----"+character+"---->  "+endState);
+	if (!this.transitions.hasOwnProperty(startState))
+		this.transitions[startState] = {};
+
 	if (!this.transitions[startState].hasOwnProperty(character))
 		this.transitions[startState][character] = [];
 	this.transitions[startState][character].push(endState);
 }
+
+automata.prototype.removeTransition = function(startState, endState, character){
+	//Assume DFA
+	//console.log("removing transition "+startState+" -----"+character+"---->  "+endState);
+	if (this.transitions[startState].hasOwnProperty(character)) {
+		if (this.transitions[startState][character].length == 1){
+			if (this.transitions[startState][character][0] === endState)
+				delete this.transitions[startState][character];
+		} else if (this.transitions[startState][character].length == 0){
+			delete this.transitions[startState][character];
+		} else {
+			this.transitions[startState][character].remove(endState);
+		}
+	}
+}
+
+automata.prototype.getTransition = function(start, end){
+	for (character in this.transitions[start]){
+		if (this.transitions[start][character].contains(end))
+			return character;
+	}
+	return null;
+}
+
+automata.prototype.cleanUpTransitionsAndStates = function (){
+		for (s in this.transitions){
+			if (Object.keys(this.transitions[s]).length == 0){
+				delete this.transitions[s];
+				if (!this.finalState.contains(s))
+					this.states.remove(s);
+			}
+				
+		}
+	}
 
 automata.prototype.setStartState = function(state) {
 	this.startState = state;
@@ -73,7 +111,7 @@ automata.prototype.getFinalState = function() {
 
 automata.fromRE = function(regularExp) {
 	ast = REtoAST.parse(regularExp);
-	return automata.ASTtoRE(ast);
+	return automata.ASTtoAutomata(ast);
 }
 
 
@@ -98,7 +136,7 @@ automata.prototype.merge = function(a) {
 
 
 
-automata.ASTtoRE = function (ast) {
+automata.ASTtoAutomata = function (ast) {
 	switch(ast.type) {
 		case 'literal':
 			var s1 = uniquegen();
@@ -111,8 +149,8 @@ automata.ASTtoRE = function (ast) {
 			a.addTransition(s1, s2, ast.val);
 			return a;
 		case '.':
-			var a1 = this.ASTtoRE(ast.arg1);
-			var a2 = this.ASTtoRE(ast.arg2);
+			var a1 = this.ASTtoAutomata(ast.arg1);
+			var a2 = this.ASTtoAutomata(ast.arg2);
 			var a3 = new automata();
 			a3.merge(a1).merge(a2);
 			a3.setFinalState(a2.getFinalState());
@@ -121,8 +159,8 @@ automata.ASTtoRE = function (ast) {
 			return a3;
     	case '|':
     		var s1 = uniquegen();
-			var a1 = this.ASTtoRE(ast.arg1);
-			var a2 = this.ASTtoRE(ast.arg2);
+			var a1 = this.ASTtoAutomata(ast.arg1);
+			var a2 = this.ASTtoAutomata(ast.arg2);
 			var s2 = uniquegen();
 			var a = new automata();
 			a.addState(s1);
@@ -138,7 +176,7 @@ automata.ASTtoRE = function (ast) {
 		  return a
 		case '*':
 			var s1 = uniquegen();
-			var a = this.ASTtoRE(ast.arg);
+			var a = this.ASTtoAutomata(ast.arg);
 			var s2 = uniquegen();
 			var new_a = new automata();
 			new_a.merge(a);
@@ -155,7 +193,7 @@ automata.ASTtoRE = function (ast) {
 			return new_a;
 		case '+':
 			var s1 = uniquegen();
-			var a = this.ASTtoRE(ast.arg);
+			var a = this.ASTtoAutomata(ast.arg);
 			var s2 = uniquegen();
 			var new_a = new automata();
 			new_a.merge(a);
@@ -170,7 +208,7 @@ automata.ASTtoRE = function (ast) {
 			break;
 		case '?':
 			var s1 = uniquegen();
-			var a = this.ASTtoRE(ast.arg);
+			var a = this.ASTtoAutomata(ast.arg);
 			var new_a = new automata();
 			new_a.setStartState(s1);
 			new_a.addState(s1);
@@ -189,7 +227,7 @@ automata.ASTtoRE = function (ast) {
     		result.addState(s2);
     		var from = ast.from.charCodeAt(0); var to = ast.to.charCodeAt(0);
     		for (lp = from; lp <= to; lp ++){
-    			var a = this.ASTtoRE({type:'literal', val:String.fromCharCode(lp)});
+    			var a = this.ASTtoAutomata({type:'literal', val:String.fromCharCode(lp)});
     			result.addTransition(s1, a.startState, epsilon);
     			result.merge(a);
     			result.addTransition(a.getFinalState(), s2, epsilon);
@@ -206,7 +244,7 @@ automata.ASTtoRE = function (ast) {
     		result.addState(s2);
     		for (lp = 0; lp < ast.set.length; lp++) {
     			item = ast.set[lp];
-    			var a = this.ASTtoRE(item);
+    			var a = this.ASTtoAutomata(item);
     			result.addTransition(s1, a.startState, epsilon);
     			result.merge(a);
     			result.addTransition(a.getFinalState(), s2, epsilon);
@@ -221,7 +259,7 @@ automata.ASTtoRE = function (ast) {
     		result.addState(s2);
     		for (lp = 0; lp < ast.set.length; lp++) {
     			item = ast.set[lp];
-    			var a = this.ASTtoRE(item);
+    			var a = this.ASTtoAutomata(item);
     			result.addTransition(s1, a.startState, epsilon);
     			result.merge(a);
     			result.addTransition(a.getFinalState(), s2, epsilon);
@@ -231,7 +269,7 @@ automata.ASTtoRE = function (ast) {
     		result.setFinalState(s3);
     		return result;
     	case 'group':
-    		var a = this.ASTtoRE(ast.group);
+    		var a = this.ASTtoAutomata(ast.group);
     		return a;
 		default:
 			throw Error('Unrecognized AST node ');
@@ -240,6 +278,8 @@ automata.ASTtoRE = function (ast) {
 
 function getEpsilonTransitionStates(transitions, state){
 	var s = [];
+	if (!transitions.hasOwnProperty(state))
+		return [];
 	if (transitions[state].hasOwnProperty(epsilon)){
 		transitions[state][epsilon].forEach(function(endState){
 			s.push(endState);
@@ -251,14 +291,18 @@ function getEpsilonTransitionStates(transitions, state){
 
 
 automata.prototype.toDFA = function() {
-	startState = this.startState;
-  transitions = clone(this.transitions);
+  	startState = this.startState;
 	finalStates = this.finalState;
+	transitions = clone(this.transitions)
 	var dfa = new automata();
+
+	//if start state has epsilon transitions, combine them to form one state
 	bigStartState = [startState].concat(getEpsilonTransitionStates(transitions, startState)).join("_");
 	dfa.addState(bigStartState);
+
 	if (bigStartState !== startState)
-	transitions[bigStartState] = {};
+		transitions[bigStartState] = {};
+
 	dfa.setStartState(bigStartState);
 		for (startState in transitions){
 	  	  for (character in transitions[startState]){
@@ -271,29 +315,8 @@ automata.prototype.toDFA = function() {
 
 		}
 	}
-/*
-	dfa.transitions = clone(transitions);
-  	for (startState in dfa.transitions){
-  		//console.log(startState)
-  		//console.log(transitions[startState]);
-		for (character in transitions[startState]){
-			endStates = transitions[startState][character];
-		//	console.log(character);
-			if (character !== epsilon){
-				//console.log(character)
-        		newState = endStates.join('_');
-        		//console.log("added state: "+newState);
-				dfa.addState(newState);
-			}
-
-		}
-	}
-*/
 	//delete unnecessary transitions
-	//console.log(dfa.states)
-
-
-
+	dfa.transitions = clone(transitions);
 	for (s in dfa.transitions){
 		if (dfa.states.indexOf(s) == -1){
 			delete dfa.transitions[s];
@@ -312,10 +335,13 @@ automata.prototype.toDFA = function() {
 			powerset = state.split("_");
 			nextpowerset = [];
 			powerset.forEach(function(state){
-				if (transitions[state].hasOwnProperty(c)){
-					result = transitions[state][c];
-					nextpowerset = nextpowerset.concat(result);
+				if (transitions.hasOwnProperty(state)){
+					if (transitions[state].hasOwnProperty(c)){
+						result = transitions[state][c];
+						nextpowerset = nextpowerset.concat(result);
+					}
 				}
+				
 			});
 			if (nextpowerset.length > 0){
 		        newEndState =  nextpowerset.unique().join("_");//union of states it can possibly go to
@@ -339,94 +365,145 @@ automata.prototype.toDFA = function() {
 		});
 	})
 
+	function renameStates(dfa){
+		var new_s;
+		var old_s;
+		for (var i = 0; i < dfa.states.length; i++){
+			new_s = uniquegen();
+			old_s = dfa.states[i];
+			dfa.states[i] = new_s;
 
-	return dfa;
+			dfa.transitions[new_s] = dfa.transitions[old_s];
+			delete dfa.transitions[old_s];
+
+			for (s in dfa.transitions){
+				for (c in dfa.transitions[s]){
+					for (j = 0; j < dfa.transitions[s][c].length; j++){
+						e = dfa.transitions[s][c][j];
+						if (e === old_s)
+							dfa.transitions[s][c][j] = new_s;
+					}
+				}
+			}
+
+			if (old_s === dfa.startState)
+				dfa.setStartState(new_s);
+
+			if (dfa.finalState.contains(old_s))
+				dfa.finalState[dfa.finalState.indexOf(old_s)] = new_s;
+		}
+
+		return dfa;
+	}
+	return renameStates(dfa);
 }
 
-function NFAtoGNFA(nfa) {
-	var gnfa = new automata();
-	gnfa.setStartState('s_start');
-	gnfa.setFinalState('s_final');
-	gnfa.addTransition('s_start', nfa.startState, '');
-	nfa.finalState.forEach(function(fs){ gnfa.addTransition(fs, 's_final', '');});
-	gnfa.transitions = gnfa.transitions.concat(nfa.transitions);
-	gnfa.state = gnfa.states.concat(nfa.states);
-	return gnfa;
-}
 
 automata.prototype.toRE = function(){
 	// TODO: WRITE MAGICAL CODE HERE
-	a = this;
-	var i = 0;
-	a.states.filter(function(q){return (q !== a.startState)&&!(q in a.finalState);})
-				.forEach(function(qRip){
-					//console.log('\n\n');
-					//console.log('qRip --- '+qRip);
-					temp = incomingAndOutgoingTransitions(qRip);
-					incomingTransitions = temp.incoming;
-					loopTransitions = temp.loop;
-					outgoingTransitions = temp.outgoing;
-
-					Rrip = loopTransitions.map(function(loopT){ return loopT.character;}).join('|');
-					incomingTransitions.forEach(function (incomingT){
-						if (outgoingTransitions.length > 1){
-
-						}
-
-						outgoingTransitions.forEach(function(outgoingT){
-							//console.log(incomingT);
-							//console.log(outgoingT)
-							a.transitions.remove(incomingT);
-							a.transitions.remove(outgoingT);
-							if (Rrip !== '')
-								a.addTransition(incomingT.startState, outgoingT.endState, incomingT.character + '(' + Rrip + ')*' + outgoingT.character);
-							else
-								a.addTransition(incomingT.startState, outgoingT.endState, incomingT.character + outgoingT.character);
-
-								//console.log('start: '+incomingT.startState+' end: '+outgoingT.endState+' char: '+incomingT.character + outgoingT.character)
-						});
-					});
-				a.states.remove(qRip);
-				i++;
-				a.printDigraph();
-
+	a = this.toDFA();
+	a.addState("start");
+	a.addTransition("start", a.startState, epsilon);
+	a.startState = "start";
+	a.addState("final");
+	a.finalState.forEach(function(oldFinalState){
+		a.addTransition(oldFinalState, "final", epsilon);
 	});
-	//console.log(a.transitions)
-	//return a.transitions[0].character;
+	a.setFinalState("final");
 
-	function incomingAndOutgoingTransitions(state){
-		incomingTransitions = [];
-		outgoingTransitions = [];
-		loopTransitions = [];
-		a.transitions.forEach(function(t){
-			if (t.endState === state){
-				if (t.startState === state)
-					loopTransitions.push(t);
-				else
-					incomingTransitions.push(t);
-			}
-			else if (t.startState === state)
-				outgoingTransitions.push(t);
+
+	a.states.filter(function(s) { return s !== "start" && s !== "final";}).forEach(function(Qk){
+		t = getIncomingandOutgoingTransitions(a.transitions, Qk);
+		//console.log(t);
+		t.incoming.forEach(function(incomingT){
+			t.outgoing.forEach(function(outgoingT){
+				Rij_old = getTransition(a.transitions, incomingT.startState, outgoingT.endState[0]); //null if nothing found
+				Rik = incomingT.character;//getTransition(incomingT.startState, Qk);
+				Rkj = outgoingT.character;
+				Rkk = t.loop;
+				if (typeof Rkk !== "undefined"){
+					if (Rij_old !== null)
+						Rij = "(" + Rij_old + ")|(" + Rik +"(" + Rkk.character + ")*" + Rkj +")";
+					else
+						Rij = Rik +"(" + Rkk.character + ")*" + Rkj;
+				}
+					
+				else {
+					if (Rij_old !== null)
+						Rij = "(" + Rij_old + ")|(" + Rik + Rkj +")";
+					else
+						Rij = Rik + Rkj;
+				}
+					
+				if (Rij_old !== null)
+					a.removeTransition(incomingT.startState, outgoingT.endState[0], Rij_old);
+				a.addTransition(incomingT.startState, outgoingT.endState[0], Rij);
+				a.removeTransition(incomingT.startState, Qk, Rik);
+				a.removeTransition(Qk, outgoingT.endState[0], Rkj);
+				if (typeof Rkk !== "undefined")
+					a.removeTransition(Qk, Qk, Rkk);
+
+			});
 		});
-		return {incoming: incomingTransitions, loop: loopTransitions, outgoing: outgoingTransitions};
+		a.states.remove(Qk);
+
+		
+		if (a.states.length == 2)
+			return;
+		
+	})
+
+	a.printDigraph();
+	branches = []
+	for (character in a.transitions["start"])
+		branches.push("("+character+")");
+
+	return branches.join("|");
+
+	
+
+	function getIncomingandOutgoingTransitions(transitions, Qk){
+		result = {incoming:[], outgoing:[]};
+		for (s in transitions){
+			for (c in transitions[s]){
+				e = transitions[s][c];
+				if (s === Qk){
+					if (e[0] === Qk){
+						result["loop"] = {character:c};
+					} else {
+						result["outgoing"].push({endState:e, character:c});
+					}
+				} else if (e == Qk){
+					result["incoming"].push({startState:s, character:c});
+				}
+			}
+		}
+		return result;
+	}
+
+	function getTransition(transitions, s1, s2){
+		for (c in transitions[s1]){
+			idx = transitions[s1][c].indexOf(s2);
+			if (idx != -1)
+				return c;
+			else
+				return null;
+		}
 	}
 }
 
-if (typeof(module)!== 'undefined') {
-	module.exports = {
-		automata: automata
-	};
-}
+
 
 automata.intersect = function(a1, a2){
 	a1 = a1.toDFA();
 	a2 = a2.toDFA();
 	var result = new automata();
-	result.setStartState(a1.startState+"_"+a2.startState);
-	result.setFinalState(a1.getFinalState()+"_"+a2.getFinalState());
+	var connector = "x";
+	result.setStartState(a1.startState+connector+a2.startState);
+	result.setFinalState(a1.getFinalState()+connector+a2.getFinalState());
 	for (i = 0; i < a1.states.length; i++){
 		for (j = 0; j < a2. states.length; j++){
-			result.addState(a1.states[i]+"_"+a2.states[j]);
+			result.addState(a1.states[i]+connector+a2.states[j]);
 		}
 	}
 	for (var start_a1 in a1.transitions){
@@ -436,8 +513,8 @@ automata.intersect = function(a1, a2){
 				for (var char_a2 in a2.transitions[start_a2]){
 					end_a2 = a2.transitions[start_a2][char_a2];
 					if (char_a1 === char_a2){
-						startState = start_a1+'_'+start_a2;
-						endState = end_a1+'_'+ end_a2;
+						startState = start_a1+connector+start_a2;
+						endState = end_a1+connector+ end_a2;
 						result.addTransition(startState, endState, char_a1);
 					}
 				}
@@ -445,13 +522,15 @@ automata.intersect = function(a1, a2){
 		}
 	}
 
-	result.setStartState(a1.startState+'_'+a2.startState);
+	result.setStartState(a1.startState+connector+a2.startState);
 	a1.finalState.forEach(function(a1_finalState){
 		a2.finalState.forEach(function(a2_finalState){
-			result.addFinalState(a1_finalState+'_'+a2_finalState);
+			result.addFinalState(a1_finalState+connector+a2_finalState);
 		})
 	})
+
 	
+	result.cleanUpTransitionsAndStates()
 	return result;
 }
 
@@ -492,8 +571,15 @@ automata.prototype.printDigraph = function(){
 }
 
 
-var a = automata.fromRE("[abc]de");
-var b = automata.fromRE("(a|b)de");
-var c = automata.complement(a);
-console.log(c.finalState)
-c.printDigraph();
+var a = automata.fromRE("[bcd]");
+var b = automata.fromRE("[abc]");
+//console.log(b)
+//console.log(automata.intersect(a,b).toRE())
+console.log(b.toDFA().toDFA())
+
+
+if (typeof(module)!== 'undefined') {
+	module.exports = {
+		automata: automata
+	};
+}
