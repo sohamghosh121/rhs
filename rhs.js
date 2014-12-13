@@ -75,7 +75,7 @@ rhs.prototype.alter = function()  {
 		if (typeof arguments[i] === "string") {
 			re = new rhs("(" + re.string + ")|(" + arguments[i] + ")");
     }
-		else if (arguments[i].constructor === rhs) {
+		else if (arguments[i] && arguments[i].constructor === rhs) {
 			re = new rhs("(" + re.string + ")|(" + arguments[i].string + ")");
 		} else {
 			throw "Invalid argument passed in";
@@ -87,6 +87,9 @@ rhs.prototype.alter = function()  {
 rhs.alter = rhs.prototype.alter;
 
 rhs.prototype.repeat = function(from, to) {
+  if (from === 1 && to === undefined) {
+      return new rhs("(" + this.string + "){1}");
+  }
   re = this
   if (re.string === undefined) {
      throw Error("Undefined rhs object");
@@ -112,13 +115,13 @@ rhs.prototype.repeat = function(from, to) {
 				return new rhs("(" + this.string + ")+");
 			}
 		}
-		else {
+		else { //to and from are defined and from is <= 1
 			if (to == 1) {
 				return new rhs("(" + this.string + ")?");
 			}
 			else {
 				if (to !== Infinity)
-					return new rhs("(" + this.string + "){0" + "," + to + "}");
+					return new rhs("(" + this.string + "){" + from + "," + to + "}");
 				else
 					return new rhs("(" + this.string + ")*");
 			}
@@ -316,240 +319,6 @@ rhs.intersect = function(re1, re2) {
 		return null;
 }
 
-function intersectAST(ast1, ast2) {
-	console.log("Comparing '"+ast1.type+"' and '"+ast2.type+"'");
-	if (typeof ast1 === "undefined" || typeof ast2 === "undefined") {
-		console.log("AST undefined");
-		return;
-	}
-	if (ast1.type === "group")
-		return intersectAST(ast1.group, ast2);
-	else if (ast2.type === "group")
-		return intersectAST(ast1, ast2.group);
-
-	switch(ast1.type) {
-		case "literal":
-			switch(ast2.type) {
-				case "literal":
-					if (ast1.val !== ast2.val)  return null
-					else return ast1;
-				case "range":
-					var c = ast1.val;
-					if (c >= ast2.from && c <= ast2.to)
-						return ast1;
-					else
-						return null;
-				case "set":
-					for (i = 0; i < ast2.set.length; i++) {
-							var a = ast2.set[i];
-							var r = intersectAST(ast1, a);
-							if (r !== null)
-								return ast1;
-					}
-				case ".":
-					return intersectAST(ast1, ast2.arg2);
-				case "|":
-					var res1 = intersectAST(ast1, ast2.arg1);
-					var res2 = intersectAST(ast1, ast2.arg2);
-					if ((res1 !== null)||(res2 !== null))
-						return ast1;
-				default:
-					return null;
-			}
-		case ".":
-			if (ast2.type === ".") {
-				var res1 = intersectAST(ast1.arg1, ast2.arg1);
-				if (res1 !== null) {
-					var res2 = intersectAST(ast1.arg2, ast2.arg2);
-					if (res2 !== null)
-						return {type:".", arg1:res1, arg2:res2};
-					else
-						return null;
-				}
-				else
-					return null;
-			}
-			else if (ast2.type === "*") {
-				//TODO: difficult case to handle
-				//greedily match as many of ast1.arg1 with ast2.arg as possible
-			}
-			else {
-
-			}
-      case "|":
-			if (ast2.type === "|") {
-				res = [];
-				var res1 = intersectAST(ast1.arg1, ast2.arg1);
-				if (res1 !== null) {res.push(res1)};
-				var res2 = intersectAST(ast1.arg1, ast2.arg2);
-				if (res2 !== null) {res.push(res2)};
-				var res3 = intersectAST(ast1.arg2, ast2.arg1);
-				if (res3 !== null) {res.push(res3)};
-				var res4 = intersectAST(ast1.arg2, ast2.arg2);
-				if (res4 !== null) {res.push(res4)};
-
-				//finite number of cases, so do not need to define a recursive method for doing this
-				switch (res.length) {
-					case 0: return null;
-					case 1: return res[0];
-					case 2: return {type:"|", arg1:res[0], arg2:res[1]};
-					case 3: return {type:"|", arg1:{type:"|", arg1:res[0], arg2:res[1]}, arg2:res[2]};
-					case 4: return {type:"|", arg1:{type:"|", arg1:{type:"|", arg1:res[0], arg2:res[1]}, arg2:res[2]}, arg2:res[3]};
-				}
-			}
-		case "*":
-			switch(ast2.type) {
-				case "*":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"*", arg:res};
-					else
-						return null;
-				case "+":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"+", arg:res};
-					else
-						return null;
-				case "?":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"?", arg:res};
-					else
-						return null;
-				case "repeat":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null){
-						if (ast2.hasOwnProperty("exactly"))
-							return {type:"repeat", arg:res, exactly:ast2.exactly};
-						else
-							return {type:"repeat", arg:res, from:ast2.from, to:ast2.to};
-					}
-					else
-						return null;
-				case "literal":
-					return intersectAST(ast2, ast1);
-			}
-			return null;
-		case "+":
-			switch(ast2.type) {
-				case "+":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"*", arg:res};
-					else
-						return null;
-				case "?":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"?", arg:res};
-					else
-						return null;
-				case "*":
-					return intersectAST(ast2, ast1);
-				case "repeat":
-					if (ast2.hasOwnProperty("exactly") && parseInt(ast2.exactly) == 0)
-						return null;
-					else if (parseInt(ast2.from) == 0)
-						return null;
-
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null){
-						if (ast2.hasOwnProperty("exactly"))
-							return {type:"repeat", arg:res, exactly:ast2.exactly};
-						else
-							return {type:"repeat", arg:res, from:ast2.from, to:ast2.to};
-					}
-					else
-						return null;
-				}
-			return null;
-		case "?":
-			switch(ast2.type) {
-				case "?":
-					var res = intersectAST(ast1.arg, ast2.arg);
-					if (res !== null)
-						return {type:"*", arg:res};
-					else
-						return null;
-				case "+":
-				case "*":
-					return intersectAST(ast2, ast1);
-				case "repeat":
-					if (ast2.hasOwnProperty("exactly")){
-						if (parseInt(ast2.exactly) > 1)
-							return null
-						var res = intersectAST(ast1.arg, ast2.arg);
-							if (res !== null)
-								return {type:"repeat", arg:res, exactly:ast2.exactly};
-					}
-					else {
-						if (parseInt(ast2.from) > 1)
-							return null;
-						var res = intersectAST(ast1.arg, ast2.arg);
-							if (res !== null)
-								return {type:"repeat", arg:res, from:ast2.from, to:ast2.to};
-					}
-				}
-			return null;
-
-		case "range":
-			if (ast2.type === "range") {
-				var c1 = ast1.from;
-				var c2 = ast2.from;
-				//TODO: some redundancy in code here
-				if (isNumber(c1)&&isNumber(c2)){
-					var from = Math.max(parseInt(c1), parseInt(c2));
-					c1 = ast1.to;
-					c2 = ast2.to;
-					var to = Math.min(parseInt(c1), parseInt(c2));
-					if (to < from)
-						return null;
-					return {type:"range", from:from, to:to};
-				}
-				else {
-					if ((isUpperCase(c1) && isUpperCase(c2))||(!isUpperCase(c1) && !isUpperCase(c2))) {
-						var from = c1 > c2 ? c1 : c2;
-						c1 = ast1.to;
-						c2 = ast2.to;
-						var to = c1 < c2 ? c1 : c2;
-						if (to < from)
-							return null;
-						return {type:"range", from:from, to:to};
-					}
-					else
-						return null;
-				}
-			}
-			else if (ast2.type === "literal")
-				return intersectAST(ast2, ast1);
-
-    case "set":
-			res = [];
-			if (ast2.type ==="set") {
-				for (i = 0; i < ast1.set.length; i++) {
-					for (j = 0; j < ast2.set.length; j++) {
-						var a = ast1.set[i];
-						var b = ast2.set[j];
-						var r = intersectAST(a, b);
-						if (r !== null)
-							res.push(r);
-					}
-				}
-				if (res.length > 0)
-					return {type:"set", set:res};
-			}
-			else if (ast2.type === "literal")
-				return intersectAST(ast2, ast1);
-			else
-				return null;
-
-		default:
-			console.log(ast1.type);
-			//throw Error("Unrecognized AST node ");
-	}
-}
-
 /*
 *	Helper functions:
 *		- check if a number
@@ -637,8 +406,24 @@ function returnRE(ast) {
  * var func1 = rhs.compose(rhs.repeat)(rhs.concat)(rhs.alter)(rhs.pivot)();
  * var result = func1("a", 4, "fgh", "e", ".")
  * where the resulting regular expression is: /((a){4}fgh)|(e).((a){4}fgh)|(e)/
- * */
-rhs.compose = function compose(f) {
+ *
+ * Can also extend composed function with further nested function composition:
+ * var func0 = rhs.compose(rhs.concat)(rhs.alter)(rhs.repeat)();
+ * var nested = rhs.compose(func0)(rhs.concat)(rhs.repeat)(rhs.concat)();
+ * var result = nested(["start with ", "abc", "def", [4, 8]], "end", 10000, "Please");
+ * where the resulting regular expression is /(((start with abc)|(def)){4,8}end){10000}Please/
+ *
+ * var re = new rhs("start");
+ * var func1 = re.compose(rhs.alter)(rhs.repeat)();
+ * var func2 = re.compose(func1)(rhs.alter)(rhs.repeat)(rhs.concat)();
+ * var result = func2(["def", [4, 8]], "end", 10000, "Please");
+*/
+
+rhs.prototype.compose = function compose(f) {
+        var reState = null;
+        if (this && typeof this === 'object'){
+            var reState = new rhs(this.string)
+        }
         var queue = f ? [f] : [];
         var fn = function fn(g) {
             if (arguments.length) {
@@ -647,16 +432,58 @@ rhs.compose = function compose(f) {
         }
         return function() {
             var args = Array.prototype.slice.call(arguments);
-            var re = new rhs(args[0])
+            if (reState) {
+                var re = reState
+            } else if (!(args[0] instanceof Array)){
+              console.log(args)
+              console.log(args[0])
+              var re = new rhs(args[0])
+              args = args.slice(1)
+            }
             for (var i = 0; i < queue.length; i++) {
-                re = queue[i].apply(re, [args[i+1]]);
+                if (args[i] === undefined || args[i] === []) {
+                    re = queue[i].call(re.string)
+                }
+                else if (args[i] instanceof Array) {
+                    if (queue[i].name === 'composed') {
+                        re = queue[i](re, args)
+                    } else {
+                    re = queue[i].apply(re, args[i]);
+                }
+                }
+                else {
+                    re = queue[i].apply(re, [args[i]]);
+                }
               }
             return re
         }
     };
     return fn;
 };
+rhs.compose = rhs.prototype.compose
 
+/*
+var re = new rhs("");
+var func0 = re.compose(rhs.concat)(rhs.alter)(rhs.repeat)();
+var nested = rhs.compose(func0)(rhs.concat)(rhs.repeat)(rhs.concat)();
+console.log(nested(["abc", "def", [4, 8]], "end", 10000, "Please"));
+*/
+
+/*
+var re = new rhs("start");
+var func1 = re.compose(rhs.alter)(rhs.repeat)();
+var func2 = re.compose(func1)(rhs.alter)(rhs.repeat)(rhs.concat)();
+console.log(func2(["friend group", [4, 8]], "[^Soham]", 10000, " Dear Bodik, please be merciful on our grades"));
+*/
+
+/*
+var re = new rhs("Friends ");
+var func1 = re.compose(rhs.alter)(rhs.repeat)();
+var func2 = re.compose(rhs.concat)();
+var nested = re.compose(func1)(func2)();
+console.log(nested(["Soham ", 100000], "HongJun"));
+*/
+//returns 'Friends HongJun'
 // Allows users to import rhs code
 if (typeof(module)!== 'undefined') {
 	module.exports = {
