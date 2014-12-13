@@ -1,6 +1,6 @@
 var REtoAST = require('./REtoAST.js');
 
-var alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}[],./?:~'.split("");
+var alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split("");
 var epsilon = '';
 
 
@@ -411,25 +411,26 @@ automata.prototype.toRE = function(){
 	});
 	a.setFinalState("final");
 
-
 	a.states.filter(function(s) { return s !== "start" && s !== "final";}).forEach(function(Qk){
 		t = getIncomingandOutgoingTransitions(a.transitions, Qk);
-		//console.log(t);
+		console.log(Qk);
 		t.incoming.forEach(function(incomingT){
 			t.outgoing.forEach(function(outgoingT){
 				Rij_old = getTransition(a.transitions, incomingT.startState, outgoingT.endState[0]); //null if nothing found
 				Rik = incomingT.character;//getTransition(incomingT.startState, Qk);
 				Rkj = outgoingT.character;
-				Rkk = t.loop;
-				if (typeof Rkk !== "undefined"){
-					if (Rij_old !== null)
-						Rij = "(" + Rij_old + ")|(" + Rik +"(" + Rkk.character + ")*" + Rkj +")";
+				Rkk = t.loop.map(function(l) {return "("+l.character+")";}).join("|");
+
+				
+				if (Rkk != ''){
+					if (Rij_old !== null && Rij_old != epsilon)
+						Rij = "(" + Rij_old + ")|(" + Rik +"(" + Rkk + ")*" + Rkj +")";
 					else
-						Rij = Rik +"(" + Rkk.character + ")*" + Rkj;
+						Rij = Rik +"(" + Rkk + ")*" + Rkj;
 				}
 					
 				else {
-					if (Rij_old !== null)
+					if (Rij_old !== null && Rij_old != epsilon)
 						Rij = "(" + Rij_old + ")|(" + Rik + Rkj +")";
 					else
 						Rij = Rik + Rkj;
@@ -440,6 +441,9 @@ automata.prototype.toRE = function(){
 				a.addTransition(incomingT.startState, outgoingT.endState[0], Rij);
 				a.removeTransition(incomingT.startState, Qk, Rik);
 				a.removeTransition(Qk, outgoingT.endState[0], Rkj);
+				t.loop.forEach(function(l){
+					a.removeTransition(Qk, Qk, l.character);
+				});
 				if (typeof Rkk !== "undefined")
 					a.removeTransition(Qk, Qk, Rkk);
 
@@ -455,21 +459,24 @@ automata.prototype.toRE = function(){
 
 	a.printDigraph();
 	branches = []
-	for (character in a.transitions["start"])
-		branches.push("("+character+")");
+	for (character in a.transitions["start"]){
+		if (a.transitions["start"][character].contains("final"))
+			branches.push("("+character+")");
+	}
+		
 
 	return branches.join("|");
 
 	
 
 	function getIncomingandOutgoingTransitions(transitions, Qk){
-		result = {incoming:[], outgoing:[]};
+		result = {incoming:[], outgoing:[], loop:[]};
 		for (s in transitions){
 			for (c in transitions[s]){
 				e = transitions[s][c];
 				if (s === Qk){
 					if (e[0] === Qk){
-						result["loop"] = {character:c};
+						result["loop"].push({character:c});
 					} else {
 						result["outgoing"].push({endState:e, character:c});
 					}
@@ -535,7 +542,13 @@ automata.intersect = function(a1, a2){
 }
 
 automata.complement = function(a1){
+	//convert to DFA
 	var result = a1.toDFA();
+	//console.log("complement - after getting DFA")
+	//result.printDigraph()
+	var finalState = "final"+uniquegen();
+
+	//flip accepting and nonaccepting states
 	oldFinalStates = result.finalState;
 	result.finalState = [];
 	result.states.forEach(function(state){
@@ -543,6 +556,20 @@ automata.complement = function(a1){
 			result.addFinalState(state);
 		}
 	});
+
+	result.addState(finalState);
+	result.addFinalState(finalState);
+	alphabet.forEach(function(c){
+		result.addTransition(finalState, finalState, c);
+	});
+	result.states.forEach(function(s){
+		alphabet.forEach(function(c){
+			if (!Object.keys(result.transitions[s]).contains(c)){
+				result.addTransition(s, finalState, c);
+			}
+		})
+	});
+	
 	return result;
 }
 
@@ -570,12 +597,6 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-
-var a = automata.fromRE("[bcd]");
-var b = automata.fromRE("[abc]");
-//console.log(b)
-//console.log(automata.intersect(a,b).toRE())
-console.log(b.toDFA().toDFA())
 
 
 if (typeof(module)!== 'undefined') {
