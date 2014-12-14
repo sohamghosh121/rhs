@@ -5,8 +5,6 @@ R "regexp"
   =  term:TERM exp:R {return {type:".", arg1: term, arg2: exp};}
   / term:TERM "|" exp:R {return {type:"|", arg1:term, arg2: exp}; }
   / term:TERM {return term; }
-  /  "[^" set:SET+ "]" {return {type:"not-set", setset:setSET}; }
-  /  "[" set:SET+ "]" {return {type:"set", set:set}; }
   
 
 TERM
@@ -24,14 +22,15 @@ ATOMICTERM
   / "(" exp:R ")" { return {type:"group", group:exp}; }
   / alphanum:ALPHANUM {return alphanum; }
   / special:SPECIAL {return special;}
+  / wildcard:"." {return {type:"wildcard"};}
+
 
 ALPHANUM
   = char:[a-zA-Z0-9] { return {type: "literal", val:char}; }
 
 ALLCHAR
   = ALPHANUM
-  / "."
-  / char:[+\-!@#$%^&*():,.?] {return {type:"literal", val:char};}
+  / char:[+\-!@#$%^&*():,.] {return {type:"literal", val:char};}
 
 NUM
   = num:[0-9] { return num;}

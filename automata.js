@@ -1,32 +1,12 @@
 var REtoAST = require('./REtoAST.js');
+require('./ArrayLibrary.js')
 
 var alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split("");
+var special = ['\t','\r','\n','\v','\f'];
 var epsilon = '';
 
 
-Array.prototype.contains = function(mxd,strict) {
-    for(i in this) {
-	if(this[i] == mxd && !strict) return true;
-	else if(this[i] === mxd) return true;
-    }
-    return false;
-}
 
-Array.prototype.unique = function(){
-   var u = {}, a = [];
-   for(var i = 0, l = this.length; i < l; ++i){
-      if(u.hasOwnProperty(this[i])) {
-         continue;
-      }
-      a.push(this[i]);
-      u[this[i]] = 1;
-   }
-   return a;
-}
-
-Array.prototype.remove = function(obj){
-	return this.splice(this.indexOf(obj), 1);
-}
 
 function clone(source){
 	destination = {};
@@ -254,9 +234,11 @@ automata.ASTtoAutomata = function (ast) {
     		var result = new automata();
     		var s1 = uniquegen();
     		var s2 = uniquegen();
+    		var s3 = uniquegen();
     		result.setStartState(s1);
     		result.addState(s1);
     		result.addState(s2);
+    		result.addState(s3);
     		for (lp = 0; lp < ast.set.length; lp++) {
     			item = ast.set[lp];
     			var a = this.ASTtoAutomata(item);
@@ -265,12 +247,52 @@ automata.ASTtoAutomata = function (ast) {
     			result.addTransition(a.getFinalState(), s2, epsilon);
     		}
     		result.addTransition(s1, s3, epsilon);
-    		var s3 = uniquegen();
     		result.setFinalState(s3);
     		return result;
     	case 'group':
     		var a = this.ASTtoAutomata(ast.group);
     		return a;
+    	case 'wildcard':
+    		var result = new automata();
+    		var startState = uniquegen();
+    		var finalState = uniquegen();
+    		result.addState(startState);
+    		result.addState(finalState);
+    		result.setFinalState(finalState);
+    		result.setStartState(startState);
+    		alphabet.forEach(function(character){
+    			var state = uniquegen();
+    			result.addTransition(startState, state, character);
+    			result.addTransition(state, finalState, epsilon);
+    		});
+    		return result;
+    	case 'special':
+    		switch(ast.val){
+    			case "s":
+    				return automata.fromRE("[ \f\n\r\t\v]");
+    			case "S":
+    				return automata.fromRE("[^ \f\n\r\t\v]");
+    			case "w":
+    				return automata.fromRE("[a-zA-Z_0-9]");
+    			case "W":
+    				return automata.fromRE("[^a-zA-Z_0-9]");
+    			case "d":
+    				return automata.fromRE("[0-9]");
+    			case "D":
+    				return automata.fromRE("[^0-9]");
+    			case "r":
+    			case "n":
+    			case "t":
+    				var result = new automata();
+		    		var s1 = uniquegen();
+		    		var s2 = uniquegen();
+		    		result.addState(s1);
+    				result.addState(s2);
+    				result.setStartState(s1);
+    				result.setFinalState(s2);
+    				result.addTransition(s1, s2, "\\"+ast.val);
+    				return result;
+    		}
 		default:
 			throw Error('Unrecognized AST node ');
 	}
@@ -609,9 +631,10 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-var a = automata.fromRE("cd*a");
-var b = automata.complement(automata.complement(a));
-console.log(b.toRE());	
+var a = automata.fromRE("[^a-c]");
+a.printDigraph();
+//var b = automata.complement(automata.complement(a));
+//console.log(b.toRE());	
 
 if (typeof(module)!== 'undefined') {
 	module.exports = {

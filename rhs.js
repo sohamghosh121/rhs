@@ -1,5 +1,5 @@
-var REtoAST = require('./REtoAST.js');
 var automata = require('./automata.js').automata;
+require('./ArrayLibrary.js')
 // The RHS object which contains the functions
 function rhs(string) {
     this.version = "1.0.0";
@@ -304,18 +304,19 @@ rhs.union = function union() {
 /*
 * The intersect function takes in two regular expressions re1, re2 and returns a regular expression that matches the
 * set of strings matched by both re1 and re2.
-* First, the regular expressions are converted to ASTs and the ASTs are traversed in a somewhat parallel fashion to build up
-* an AST that denotes an intersection of the two.
+* First, the regular expressions are converted to automatons which are handled in automata.js for converting from regular expression
 * Second this AST is converted back to regular expression using rhs.ASTtoRE()
 */
 rhs.intersect = function intersect(re1, re2) {
-	ast1 = rhs.REtoAST(re1);
-	ast2 = rhs.REtoAST(re2);
-	finalAST = intersectAST(ast1, ast2);
-	if (finalAST !== null)
-		return rhs.ASTtoRE(finalAST);
-	else
-		return null;
+	if (re1.constructor === rhs)
+		re1 = re1.string;
+	if (re2.constructor === rhs)
+		re2 = re2.string;
+	return new rhs(automata.intersect(automata.fromRE(re1), automata.fromRE(re2)).toRE());
+}
+
+rhs.prototype.complement = function complement(){
+	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
 }
 
 /*
@@ -331,73 +332,7 @@ function isUpperCase(x){
 	return x.toUpperCase === x;
 }
 
-Array.prototype.contains = function contains(mxd,strict) {
-    for(i in this) {
-	if(this[i] == mxd && !strict) return true;
-	else if(this[i] === mxd) return true;
-    }
-    return false;
-}
 
-/*
-*	Handling RE to ASTs and vice versa
-*	(especially needed for intersect operation):
-*/
-
-rhs.REtoAST = function(re) {
-	if (re.constructor === rhs)
-		return REtoAST.parse(re.string);
-	else
-		return REtoAST.parse(re);
-}
-
-rhs.ASTtoRE = function(ast){
-	re = returnRE(ast);
-	return new rhs(re);
-}
-
-function returnRE(ast) {
-	switch(ast.type) {
-		case "literal":
-			return ast.val;
-		case "special":
-			return "\\" + ast.val;
-		case "range":
-			return ast.from + "-" + ast.to;
-		case ".":
-			return returnRE(ast.arg1) + returnRE(ast.arg2);
-			break;
-		case "|":
-			return "(" + returnRE(ast.arg1) + ")|(" + returnRE(ast.arg2) +")";
-			break;
-		case "+":
-		case "*":
-		case "?":
-			return returnRE(ast.arg) + ast.type;
-		case "group":
-			return "(" + returnRE(ast.group) + ")";
-		case "repeat":
-			if (ast.hasOwnProperty("exactly")) {
-				return returnRE(ast.arg) + "{" + ast.exactly + "}";
-			}
-			else {
-				if (ast.to === "infinity") {
-					return returnRE(ast.arg) +"{" + ast.from + ",}";
-				}
-				else {
-					return returnRE(ast.arg) +"{" + ast.from + "," + ast.to + "}";
-				}
-			}
-		case "set":
-			var g = ast.set.map(returnRE).join("");
-			return "[" + g + "]";
-		case "not-set":
-			var g = ast.set.map(returnRE).join("");
-			return "[^" + g + "]";
-		default:
-			throw Error("Unhandled AST node in ASTtoRE()");
-	}
-}
 
 /* rhs.compose allows rhs to support new function composition. It returns a new function that
  * maps input arguments to functions one-to-one and is to be read left from right.
@@ -515,56 +450,7 @@ rhs.prototype.compose = function compose(f) {
 };
 rhs.compose = rhs.prototype.compose
 
-/*
-var re = new rhs("");
-var func0 = re.compose(rhs.concat)(rhs.alter)(rhs.repeat)();
-var nested = rhs.compose(func0)(rhs.concat)(rhs.repeat)(rhs.concat)();
-console.log(nested(["abc", "def", [4, 8]], "end", 10000, "Please"));
-*/
 
-/*
-var re = new rhs("start");
-var func1 = re.compose(rhs.alter)(rhs.repeat)();
-var func2 = re.compose(func1)(rhs.alter)(rhs.repeat)(rhs.concat)();
-console.log(func2(["friend group", [4, 8]], "[^Soham]", 10000, " Dear Bodik, please be merciful on our grades"));
-*/
-
-/*
-var re = new rhs("Friends ");
-var func3 = re.compose(rhs.alter)(rhs.repeat)();
-var func4 = re.compose(rhs.concat)();
-var nested = re.compose(func1)(func2)();
-console.log(nested(["Soham ", 100000], "HongJun"));
-*/
-//returns 'Friends HongJun'
-
-/*
-var doubleConcat = rhs.compose(rhs.concat)(rhs.concat)();
-var result = doubleConcat(rhs.alphabet, '.', rhs.alphabet)
-console.log(result)
-var result2 = doubleConcat(rhs.alphabet, ['*', rhs.digit, '*'], ['@', '?'])
-console.log(result2)
-
-var pivotNames = rhs.compose(rhs.concat)(rhs.pivot)();
-var names = pivotNames(rhs.alphabet, rhs.digit, '@')
-console.log(names)
-var extend = rhs.compose(doubleConcat)(rhs.pivot)();
-var part1 = extend([rhs.alphabet, '*', [rhs.digit, '*']], '.');
-console.log(part1)
-var finalResult = part1.pivot('@')
-console.log(finalResult)
-*/
-
-/* Curried function composition example */
-var curry = rhs.compose(rhs.pivot)(rhs.alter)(rhs.alter)(rhs.alter)(rhs.single)(rhs.alter)();
-//var full = curry("Friend ", ["Soham "], ["HongJun"], ["Radhika"], ["Sara"], []);
-//console.log(full)
-/* returns RE: /(Friend Soham Friend HongJun)|(Radhika)(Sara){1}/ */
-var curried = curry("Friend ", ["Soham "]);
-console.log("RESULT")
-console.log(curried(["HongJun"], ["Radhika"], ["Sara"], [], ["hi"]));
-console.log(curried)
-console.log(curried(["Bodik"], ["Sara"], ["Weee"], [], ["Friendship is magic"]));
 
 
 // Allows users to import rhs code
