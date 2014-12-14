@@ -40,7 +40,7 @@ rhs.octal = new rhs("\O");
 *		- group:
 *		- single: R{1}
 */
-rhs.prototype.concat = function()  {
+rhs.prototype.concat = function concat()  {
 	if (arguments.length == 0) {
 		throw Error("No arguments passed");
 	}
@@ -63,7 +63,7 @@ rhs.prototype.concat = function()  {
 
 rhs.concat = rhs.prototype.concat;
 
-rhs.prototype.alter = function()  {
+rhs.prototype.alter = function alter()  {
 	if (arguments.length == 0) {
 		throw Error("No arguments passed in.");
 	}
@@ -86,7 +86,7 @@ rhs.prototype.alter = function()  {
 
 rhs.alter = rhs.prototype.alter;
 
-rhs.prototype.repeat = function(from, to) {
+rhs.prototype.repeat = function repeat(from, to) {
   if (from === 1 && to === undefined) {
       return new rhs("(" + this.string + "){1}");
   }
@@ -131,7 +131,7 @@ rhs.prototype.repeat = function(from, to) {
 
 rhs.repeat = rhs.prototype.repeat;
 
-rhs.prototype.single = function() {
+rhs.prototype.single = function single() {
     if (this.string === undefined) {
      throw Error("Undefined rhs object");
   }
@@ -147,7 +147,7 @@ rhs.prototype.single = function() {
 }
 rhs.single = rhs.prototype.single;
 
-rhs.prototype.pivot = function(string) {
+rhs.prototype.pivot = function pivot(string) {
   if (arguments.length !== 1) {
       throw Error("Invalid number of arguments given.")
   } else {
@@ -156,7 +156,7 @@ rhs.prototype.pivot = function(string) {
 }
 rhs.pivot = rhs.prototype.pivot;
 
-rhs.prototype.not = function() {
+rhs.prototype.not = function not() {
   if (arguments.length == 0) {
       throw Error("Invalid number of arguments given.")
     }
@@ -171,7 +171,7 @@ rhs.prototype.not = function() {
 }
 rhs.not = rhs.prototype.not
 
-rhs.prototype.toString = function(readable) {
+rhs.prototype.toString = function toString(readable) {
 	if (readable !== "undefined" && readable){
 		if (this.string === rhs.ipaddress.string)
 			return  "IP address";
@@ -184,7 +184,7 @@ rhs.prototype.toString = function(readable) {
 }
 rhs.toString = rhs.prototype.toString
 
-rhs.group = function() {
+rhs.group = function group() {
 	var re = ""
 	for (var i = 0; i < arguments.length; i++) {
 		if (typeof arguments[i] === "string"){
@@ -197,11 +197,10 @@ rhs.group = function() {
 			throw Error("Invalid argument passed in");
 		}
 	}
-	console.log(re)
 	return new rhs("[" + re + "]");
 }
 
-rhs.range = function(c1, c2) {
+rhs.range = function range(c1, c2) {
 	if (isNumber(c1) && isNumber(c2)) {
 		if (parseInt(c1) > 9 || parseInt(c1) < 0 || parseInt(c2) > 9 || parseInt(c2) < 0)
 			throw Error("Arguments to range("+c1+","+c2+") out of bounds")
@@ -271,7 +270,7 @@ rhs.split = rhs.prototype.split
 *
 */
 
-rhs.union = function() {
+rhs.union = function union() {
     if (arguments.length == 0 || arguments.length == 1) {
 	throw "Need at least 2 arguments";
     }
@@ -286,7 +285,7 @@ rhs.union = function() {
 		re =  re + arguments[i].string + "|"
 	    }
 	    list.push(arguments[i].string)
-	}else if (typeof arguments[i] === "string"){
+	} else if (typeof arguments[i] === "string"){
 
     if (!(list.contains(arguments[i]))){
 		re =  re + arguments[i] + "|"
@@ -309,7 +308,7 @@ rhs.union = function() {
 * an AST that denotes an intersection of the two.
 * Second this AST is converted back to regular expression using rhs.ASTtoRE()
 */
-rhs.intersect = function(re1, re2) {
+rhs.intersect = function intersect(re1, re2) {
 	ast1 = rhs.REtoAST(re1);
 	ast2 = rhs.REtoAST(re2);
 	finalAST = intersectAST(ast1, ast2);
@@ -332,7 +331,7 @@ function isUpperCase(x){
 	return x.toUpperCase === x;
 }
 
-Array.prototype.contains = function(mxd,strict) {
+Array.prototype.contains = function contains(mxd,strict) {
     for(i in this) {
 	if(this[i] == mxd && !strict) return true;
 	else if(this[i] === mxd) return true;
@@ -430,34 +429,88 @@ rhs.prototype.compose = function compose(f) {
                 queue.push(g);
                 return fn;
         }
-        return function() {
+        return function composed() {
+            var queueSize = queue.length;
             var args = Array.prototype.slice.call(arguments);
-            if (reState) {
-                var re = reState
-            } else if (!(args[0] instanceof Array)){
-              console.log(args)
-              console.log(args[0])
-              var re = new rhs(args[0])
-              args = args.slice(1)
+            if (arguments.length < 1) {
+                return composed;
+            } else if (arguments.length < queue.length) {
+                if (reState) {
+                    var re = reState
+                    var start = arguments.length
+                } else if (!(args[0] instanceof Array)){
+                  var re = new rhs(args[0])
+                  args = args.slice(1)
+                  var start = arguments.length - 1
+                } else {
+                  var re = new rhs("")
+                  var start = arguments.length
+                }
+                for (var i = 0; i < args.length; i++) {
+                    if (args[i] === undefined || args[i] === []) {
+                        re = queue[i].call(re.string)
+                    }
+                    else if (args[i] instanceof Array) {
+                        if (queue[i].name === 'composed') {
+                            re = queue[i](re, args);
+                        } else {
+                            re = queue[i].apply(re, args[i]);
+                        }
+                    }
+                    else {
+                        re = queue[i].apply(re, [args[i]]);
+                    }
+                  }
+                queue = queue.slice(start);
+                reStart = re;
+                return function curried() {
+                  var args = Array.prototype.slice.call(arguments);
+                  re = reStart;
+                  for (var i = 0; i < queue.length; i++) {
+                      if (args[i] === undefined || args[i] === []) {
+                          re = queue[i].call(re.string)
+                      }
+                      else if (args[i] instanceof Array) {
+                          if (queue[i].name === 'composed') {
+                              re = queue[i](re, args);
+                         } else {
+                              re = queue[i].apply(re, args[i]);
+                          }
+                      }
+                      else {
+                          re = queue[i].apply(re, [args[i]]);
+                      }
+                    }
+                return re;
+                }
+            } else {
+                if (reState) {
+                    var re = reState
+                } else if (!(args[0] instanceof Array)){
+                  var re = new rhs(args[0])
+                  args = args.slice(1)
+                } else {
+                  var re = new rhs("")
+                }
+                for (var i = 0; i < queue.length; i++) {
+                    if (args[i] === undefined || args[i] === []) {
+                        re = queue[i].call(re.string)
+                    }
+                    else if (args[i] instanceof Array) {
+                        if (queue[i].name === 'composed') {
+                            re = queue[i](re, args);
+                        } else {
+                            re = queue[i].apply(re, args[i]);
+                        }
+                    }
+                    else {
+                        re = queue[i].apply(re, [args[i]]);
+                    }
+                  }
+                return re
             }
-            for (var i = 0; i < queue.length; i++) {
-                if (args[i] === undefined || args[i] === []) {
-                    re = queue[i].call(re.string)
-                }
-                else if (args[i] instanceof Array) {
-                    if (queue[i].name === 'composed') {
-                        re = queue[i](re, args)
-                    } else {
-                    re = queue[i].apply(re, args[i]);
-                }
-                }
-                else {
-                    re = queue[i].apply(re, [args[i]]);
-                }
-              }
-            return re
         }
-    };
+      };
     return fn;
 };
 rhs.compose = rhs.prototype.compose
@@ -478,12 +531,42 @@ console.log(func2(["friend group", [4, 8]], "[^Soham]", 10000, " Dear Bodik, ple
 
 /*
 var re = new rhs("Friends ");
-var func1 = re.compose(rhs.alter)(rhs.repeat)();
-var func2 = re.compose(rhs.concat)();
+var func3 = re.compose(rhs.alter)(rhs.repeat)();
+var func4 = re.compose(rhs.concat)();
 var nested = re.compose(func1)(func2)();
 console.log(nested(["Soham ", 100000], "HongJun"));
 */
 //returns 'Friends HongJun'
+
+/*
+var doubleConcat = rhs.compose(rhs.concat)(rhs.concat)();
+var result = doubleConcat(rhs.alphabet, '.', rhs.alphabet)
+console.log(result)
+var result2 = doubleConcat(rhs.alphabet, ['*', rhs.digit, '*'], ['@', '?'])
+console.log(result2)
+
+var pivotNames = rhs.compose(rhs.concat)(rhs.pivot)();
+var names = pivotNames(rhs.alphabet, rhs.digit, '@')
+console.log(names)
+var extend = rhs.compose(doubleConcat)(rhs.pivot)();
+var part1 = extend([rhs.alphabet, '*', [rhs.digit, '*']], '.');
+console.log(part1)
+var finalResult = part1.pivot('@')
+console.log(finalResult)
+*/
+
+/* Curried function composition example */
+var curry = rhs.compose(rhs.pivot)(rhs.alter)(rhs.alter)(rhs.alter)(rhs.single)(rhs.alter)();
+//var full = curry("Friend ", ["Soham "], ["HongJun"], ["Radhika"], ["Sara"], []);
+//console.log(full)
+/* returns RE: /(Friend Soham Friend HongJun)|(Radhika)(Sara){1}/ */
+var curried = curry("Friend ", ["Soham "]);
+console.log("RESULT")
+console.log(curried(["HongJun"], ["Radhika"], ["Sara"], [], ["hi"]));
+console.log(curried)
+console.log(curried(["Bodik"], ["Sara"], ["Weee"], [], ["Friendship is magic"]));
+
+
 // Allows users to import rhs code
 if (typeof(module)!== 'undefined') {
 	module.exports = {
