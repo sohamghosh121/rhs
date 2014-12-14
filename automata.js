@@ -413,7 +413,6 @@ automata.prototype.toRE = function(){
 
 	a.states.filter(function(s) { return s !== "start" && s !== "final";}).forEach(function(Qk){
 		t = getIncomingandOutgoingTransitions(a.transitions, Qk);
-		console.log(Qk);
 		t.incoming.forEach(function(incomingT){
 			t.outgoing.forEach(function(outgoingT){
 				Rij_old = getTransition(a.transitions, incomingT.startState, outgoingT.endState[0]); //null if nothing found
@@ -423,15 +422,28 @@ automata.prototype.toRE = function(){
 
 				
 				if (Rkk != ''){
-					if (Rij_old !== null && Rij_old != epsilon)
-						Rij = "(" + Rij_old + ")|(" + Rik +"(" + Rkk + ")*" + Rkj +")";
+
+					if (Rij_old !== null && Rij_old != epsilon){
+						Rikkj = Rik +"(" + Rkk + ")*" + Rkj
+						if (Rij_old.length > Rikkj.length)
+							Rij = "(" + Rij_old + ")|(" + Rikkj +")";
+						else
+							Rij = "(" + Rikkj + ")|(" + Rij_old +")";
+					}
+						
 					else
 						Rij = Rik +"(" + Rkk + ")*" + Rkj;
 				}
 					
 				else {
-					if (Rij_old !== null && Rij_old != epsilon)
-						Rij = "(" + Rij_old + ")|(" + Rik + Rkj +")";
+					if (Rij_old !== null && Rij_old != epsilon) {
+						Rikkj = Rik + Rkj
+						if (Rij_old.length > Rikkj.length)
+							Rij = "(" + Rij_old + ")|(" + Rikkj +")";
+						else
+							Rij = "(" + Rikkj + ")|(" + Rij_old +")";
+					}
+						
 					else
 						Rij = Rik + Rkj;
 				}
@@ -457,16 +469,16 @@ automata.prototype.toRE = function(){
 		
 	})
 
-	a.printDigraph();
+	//a.printDigraph();
 	branches = []
 	for (character in a.transitions["start"]){
 		if (a.transitions["start"][character].contains("final"))
 			branches.push("("+character+")");
 	}
 		
-
-	return branches.join("|");
-
+	branches = branches.sort(function(a,b){ console.log(a.length); return b.length - a.length;});
+	var re = branches.join("|");
+	return re;
 	
 
 	function getIncomingandOutgoingTransitions(transitions, Qk){
@@ -597,7 +609,9 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-
+var a = automata.fromRE("cd*a");
+var b = automata.complement(automata.complement(a));
+console.log(b.toRE());	
 
 if (typeof(module)!== 'undefined') {
 	module.exports = {
