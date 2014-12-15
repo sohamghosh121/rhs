@@ -3,9 +3,10 @@ start
 
 R "regexp"
   =  term:TERM exp:R {return {type:".", arg1: term, arg2: exp};}
-  / term:TERM "|" exp:R {return {type:"|", arg1:term, arg2: exp}; }
+  / term1:TERM "|" term2:TERM exp:R {return {type:".", arg1:{type:"|", arg1:term1, arg2: term2}, arg2:exp}; }
   / term:TERM {return term; }
   
+
 
 TERM
   =  term:ATOMICTERM "*" {return {type:"*", arg:term}; }

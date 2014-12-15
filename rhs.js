@@ -1,6 +1,7 @@
 var automata = require('./automata.js').automata;
 require('./ArrayLibrary.js')
 // The RHS object which contains the functions
+
 function rhs(string) {
     this.version = "1.0.0";
     this.exp = new RegExp(string);
@@ -87,16 +88,16 @@ rhs.prototype.alter = function alter()  {
 rhs.alter = rhs.prototype.alter;
 
 rhs.prototype.repeat = function repeat(from, to) {
-  if (from === 1 && to === undefined) {
-      return new rhs("(" + this.string + "){1}");
-  }
-  re = this
-  if (re.string === undefined) {
-     throw Error("Undefined rhs object");
-  }
+	if (from === 1 && to === undefined) {
+		return new rhs("(" + this.string + "){1}");
+	}
+	re = this
+	if (re.string === undefined) {
+	 throw Error("Undefined rhs object");
+	}
 	if (to < from || from < 0)
 		throw Error("Repeat parameters are out of bounds");
-  if (from > 1){
+	if (from > 1){
 		if (to !== undefined) {
 			if (to === Infinity)
 				return new rhs("(" + this.string + "){" + from + ",}");
@@ -316,6 +317,7 @@ rhs.intersect = function intersect(re1, re2) {
 }
 
 rhs.prototype.complement = function complement(){
+	this = 
 	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
 }
 
