@@ -3,4 +3,4 @@ if (typeof(module) !== 'undefined') {
 	var automata = require('./automata.js').automata;
 }
 
-//console.log(automata.fromRE("a|b"));
+console.log(new rhs("abc").alter("d","e","f"))
