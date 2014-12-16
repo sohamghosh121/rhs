@@ -8,6 +8,7 @@ var full = curry("We are ","friends forever ", ["HongJun"], ["Radhika"], ["Soham
 console.log(full.toString())
 console.log()
 // returns RE: /(Friend Soham Friend HongJun)|(Radhika)(Sara){1}/
+console.log("<---------->")
 var curried = curry("Friend ", ["Soham "]);
 console.log(curried(["HongJun"], ["Radhika"], ["Sara"], [], ["peace out"]).toString());
 console.log()

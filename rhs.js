@@ -380,6 +380,11 @@ rhs.prototype.compose = function compose(f) {
         return function composed() {
             var queueSize = queue.length;
             var args = Array.prototype.slice.call(arguments);
+            if (args.length === 1 && args instanceof Array && args[0] instanceof Array) {
+                console.log(args)
+                args = args[0]
+                arguments.length = args.length
+            }
             if (arguments.length < 1) {
                 return composed;
             } else if (arguments.length < queue.length) {
@@ -400,7 +405,8 @@ rhs.prototype.compose = function compose(f) {
                     }
                     else if (args[i] instanceof Array) {
                         if (queue[i].name === 'composed') {
-                            re = queue[i](re, args);
+                            args_list = args[i]
+                            re = queue[i](args_list);
                         } else {
                             re = queue[i].apply(re, args[i]);
                         }
@@ -420,7 +426,8 @@ rhs.prototype.compose = function compose(f) {
                       }
                       else if (args[i] instanceof Array) {
                           if (queue[i].name === 'composed') {
-                              re = queue[i](re, args);
+                            args_list = args[i]
+                            re = queue[i](args_list);
                          } else {
                               re = queue[i].apply(re, args[i]);
                           }
@@ -446,7 +453,8 @@ rhs.prototype.compose = function compose(f) {
                     }
                     else if (args[i] instanceof Array) {
                         if (queue[i].name === 'composed') {
-                            re = queue[i](re, args);
+                            args_list = args[i]
+                            re = queue[i](args_list);
                         } else {
                             re = queue[i].apply(re, args[i]);
                         }

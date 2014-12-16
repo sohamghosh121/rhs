@@ -17,7 +17,7 @@ alphabetDigit = rhs.group(alphabetDigit)
 var alphaDigRepeat = rhs.concat("(?:)", alphabetDigitscore.repeat(0, Infinity), alphabetDigit).repeat(0,1);
 var domain = rhs.concat("(?:)", alphabetDigit, alphaDigRepeat.concat("\\.")).repeat(1, Infinity).concat(alphabetDigit).concat(alphaDigRepeat);
 var email = local.concat('@', domain)
-
+//can also write var email = rhs.concat(local, '@', domain);
 console.log(email.toString())
 
 console.log(email.match("radhika.marvin@yahoo.com"));
