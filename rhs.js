@@ -158,7 +158,6 @@ rhs.prototype.pivot = function pivot(string1, string2) {
     }
    }
 }
-}
 rhs.pivot = rhs.prototype.pivot;
 
 rhs.prototype.not = function not() {
@@ -348,8 +347,6 @@ function isNumber(x) {
 function isUpperCase(x){
 	return x.toUpperCase === x;
 }
-
-
 
 /* rhs.compose allows rhs to support new function composition. It returns a new function that
  * maps input arguments to functions one-to-one and is to be read left from right.
