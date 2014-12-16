@@ -45,7 +45,6 @@ rhs.octal = new rhs("\O");
 *		- single: R{1}
 */
 rhs.prototype.concat = function concat()  {
-    console.log(arguments)
     if (arguments.length == 0) {
       throw Error("No arguments passed");
     }
@@ -156,6 +155,7 @@ rhs.prototype.pivot = function pivot(string1, string2) {
               return new rhs(string1.string + string2.string + string1.string);
         }
    }
+}
 }
 rhs.pivot = rhs.prototype.pivot;
 
