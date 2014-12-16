@@ -1,3 +1,5 @@
+//Array prototype helper functions used in our code
+
 Array.prototype.contains = function(mxd,strict) {
     for(i in this) {
 		if(this[i] == mxd && !strict) return true;

@@ -8,14 +8,8 @@ var epsilon = '';
 
 
 
-function clone(source){
-	destination = {};
-	for (key  in source){
-		destination[key] = source[key];
-	}
-	return destination;
-}
 
+//automata constructor
 function automata() {
 	this.states = [];
 	this.startState = '';
@@ -23,7 +17,15 @@ function automata() {
 	this.transitions = {}
 }
 
-
+/*
+*	Automata helper methods:
+*	- addState(s)
+*	- addTransition(s,s',c)
+*	- removeTransition(s,s',c)
+*	- getTransition(s,s')
+*	- fromRE(re): parses regular expression to AST which is converted to a automata object in ASTtoAutomata()
+*	- uniqugen(): generate a state with a unique name
+*/
 automata.prototype.addState = function(state) {
 	this.states.push(state);
 	this.transitions[state] = {};
@@ -40,8 +42,6 @@ automata.prototype.addTransition = function(startState, endState, character) {
 }
 
 automata.prototype.removeTransition = function(startState, endState, character){
-	//Assume DFA
-	//console.log("removing transition "+startState+" -----"+character+"---->  "+endState);
 	if (this.transitions[startState].hasOwnProperty(character)) {
 		if (this.transitions[startState][character].length == 1){
 			if (this.transitions[startState][character][0] === endState)
@@ -69,7 +69,6 @@ automata.prototype.cleanUpTransitionsAndStates = function (){
 				if (!this.finalState.contains(s))
 					this.states.remove(s);
 			}
-				
 		}
 	}
 
@@ -112,9 +111,6 @@ automata.prototype.merge = function(a) {
 	}
 	return this;
 }
-
-
-
 
 automata.ASTtoAutomata = function (ast) {
 	switch(ast.type) {
@@ -298,6 +294,10 @@ automata.ASTtoAutomata = function (ast) {
 	}
 }
 
+
+
+
+//helper function to recursively follow through all epsilon transitions and return a concatenated list of the states of the NFA
 function getEpsilonTransitionStates(transitions, state){
 	var s = [];
 	if (!transitions.hasOwnProperty(state))
@@ -422,7 +422,6 @@ automata.prototype.toDFA = function() {
 
 
 automata.prototype.toRE = function(){
-	// TODO: WRITE MAGICAL CODE HERE
 	a = this.toDFA();
 	a.addState("start");
 	a.addTransition("start", a.startState, epsilon);
@@ -484,15 +483,12 @@ automata.prototype.toRE = function(){
 			});
 		});
 		a.states.remove(Qk);
-
-		
 		if (a.states.length == 2)
 			return;
-		
 	})
 
-	//a.printDigraph();
-	branches = []
+	//branches from start node to final node.
+	branches = [];
 	for (character in a.transitions["start"]){
 		if (a.transitions["start"][character].contains("final"))
 			branches.push("("+character+")");
@@ -500,6 +496,8 @@ automata.prototype.toRE = function(){
 		
 	branches = branches.sort(function(a,b){ console.log(a.length); return b.length - a.length;});
 	var re = branches.join("|");
+	if (re === "") //no transitions from start -> final (no valid regular expression)
+		return null;
 	return re;
 	
 
@@ -578,8 +576,8 @@ automata.intersect = function(a1, a2){
 automata.complement = function(a1){
 	//convert to DFA
 	var result = a1.toDFA();
-	//console.log("complement - after getting DFA")
-	//result.printDigraph()
+
+	//create a trap state
 	var finalState = "final"+uniquegen();
 
 	//flip accepting and nonaccepting states
@@ -591,11 +589,16 @@ automata.complement = function(a1){
 		}
 	});
 
+	//add new states to the DFA
 	result.addState(finalState);
 	result.addFinalState(finalState);
+
+	//add transitions from trap state to trap state
 	alphabet.forEach(function(c){
 		result.addTransition(finalState, finalState, c);
 	});
+
+	//add transitions from other states to trap state
 	result.states.forEach(function(s){
 		alphabet.forEach(function(c){
 			if (!Object.keys(result.transitions[s]).contains(c)){
@@ -607,6 +610,8 @@ automata.complement = function(a1){
 	return result;
 }
 
+
+//Print a digraph which can be used with dot to visualise automaton.
 automata.prototype.printDigraph = function(){
   var a = this;
 	var digraph = 'digraph{\n';
@@ -631,10 +636,14 @@ automata.prototype.printDigraph = function(){
 	console.log(digraph);
 }
 
-var a = automata.fromRE("[^a-c]");
-a.printDigraph();
-//var b = automata.complement(automata.complement(a));
-//console.log(b.toRE());	
+//helper function to clone object
+function clone(source){
+	destination = {};
+	for (key  in source){
+		destination[key] = source[key];
+	}
+	return destination;
+}
 
 if (typeof(module)!== 'undefined') {
 	module.exports = {

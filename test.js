@@ -3,7 +3,6 @@ if (typeof(module) !== 'undefined') {
 	var automata = require('./automata.js').automata;
 }
 
-
 /* "[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?" */
 
 var allowedChars = "a-zA-Z0-9"
@@ -17,4 +16,4 @@ email = rhs.concat(allowedChars, local)
 
 //var first = rhs.concat(rhs.alphabet, rhs.digit, special).repeat(1, infinity)
 //var local = rhs.concat(rhs.alphabet, rhs.digits, special,
-console.log(local)
+

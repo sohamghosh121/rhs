@@ -45,26 +45,20 @@ rhs.octal = new rhs("\O");
 *		- single: R{1}
 */
 rhs.prototype.concat = function concat()  {
-  console.log(arguments)
-	if (arguments.length == 0) {
-		throw Error("No arguments passed");
-	}
-	var re = this
-  if (re.string === undefined) {
-      re = new rhs("");
-  }
-	for (var i = 0; i < arguments.length; i++) {
-		if (typeof arguments[i] === "string") {
-			re = new rhs(re.string + arguments[i]);
+    console.log(arguments)
+    if (arguments.length == 0) {
+      throw Error("No arguments passed");
     }
-		else if (arguments[i] && arguments[i].constructor && arguments[i].constructor === rhs) {
-			re = new rhs(re.string + arguments[i].string);
-		}
-		else {
-			throw Error("Invalid argument passed in");
-		}
-	}
-	return re;
+    var re = this;
+    if (re.string === undefined) {
+      re = new rhs("");
+    }
+    var concatargs = [];
+    for (k in arguments)
+      concatargs.push(arguments[k]);
+    concatargs = [re.string].concat(concatargs);
+    var newregexp = concatargs.join("");
+    return new rhs(newregexp);
 }
 rhs.concat = rhs.prototype.concat;
 
@@ -73,20 +67,17 @@ rhs.prototype.alter = function alter()  {
 		throw Error("No arguments passed in.");
 	}
 	var re = this
-  if (re.string === undefined) {
-      re = new rhs("");
-  }
-	for (var i = 0; i < arguments.length; i++) {
-		if (typeof arguments[i] === "string") {
-			re = new rhs("(" + re.string + ")|(" + arguments[i] + ")");
-    }
-		else if (arguments[i] && arguments[i].constructor === rhs) {
-			re = new rhs("(" + re.string + ")|(" + arguments[i].string + ")");
-		} else {
-			throw "Invalid argument passed in";
-		}
+	if (re.string === undefined) {
+    	re = new rhs("");
 	}
-	return re;
+
+	var alterargs = [];
+	for (k in arguments)
+		alterargs.push(arguments[k]);
+	alterargs = [re.string].concat(alterargs);
+	alterargs = alterargs.map(function(arg){ if (arg.length != 1) return "("+arg+")"; else return arg;});
+	var newregexp = alterargs.join("|");
+	return new rhs(newregexp);
 }
 
 rhs.alter = rhs.prototype.alter;
@@ -97,40 +88,30 @@ rhs.prototype.repeat = function repeat(from, to) {
 	}
 	re = this
 	if (re.string === undefined) {
-	 throw Error("Undefined rhs object");
+	 throw new Error("Undefined rhs object");
 	}
-	if (to < from || from < 0)
-		throw Error("Repeat parameters are out of bounds");
-	if (from > 1){
-		if (to !== undefined) {
-			if (to === Infinity)
-				return new rhs("(" + this.string + "){" + from + ",}");
+	if (to <= from || from < 0)
+		throw new Error("Repeat parameters are out of bounds");
+
+
+	if (this.string.length > 1)
+		this.string = "(" + this.string + ")";
+
+	switch(to){
+		case undefined:
+			return new rhs(this.string + "{" + from + "}");
+		case Infinity:
+			if (from == 0)
+				return new rhs(this.string+"*");
+			else if (from == 1)
+				return new rhs(this.string + "+");
 			else
-				return new rhs("(" + this.string + "){" + from + "," + to + "}");
-		}
-		else
-			return new rhs("(" + this.string + "){" + from + "}");
-	}
-	else {
-		if (to === undefined) {
-			if (from == 0) {
-					return new rhs("(" + this.string+")*");
-			}
-			else if (from == 1) {
-				return new rhs("(" + this.string + ")+");
-			}
-		}
-		else { //to and from are defined and from is <= 1
-			if (to == 1) {
-				return new rhs("(" + this.string + ")?");
-			}
-			else {
-				if (to !== Infinity)
-					return new rhs("(" + this.string + "){" + from + "," + to + "}");
-				else
-					return new rhs("(" + this.string + ")*");
-			}
-		}
+				return new rhs(this.string + "{" + from + ",}");
+		default:
+			if (from == 0 && to == 1)
+				return new rhs(this.string + "?");
+			else
+				return new rhs(this.string + "{" + from + "}");
 	}
 }
 
@@ -141,7 +122,7 @@ rhs.prototype.single = function single() {
      throw Error("Undefined rhs object");
   }
 	  if (arguments.length == 0) {
-      return new rhs('(' + this.string + '){1}');
+      	return new rhs('(' + this.string + '){1}');
 	  } else {
       var re = this.string;
       for (var i = 0; i < arguments.length; i++) {
@@ -176,19 +157,23 @@ rhs.prototype.pivot = function pivot(string1, string2) {
         }
    }
 }
-}
 rhs.pivot = rhs.prototype.pivot;
 
 rhs.prototype.not = function not() {
-  if (arguments.length == 0) {
-      throw Error("Invalid number of arguments given.")
+	if (arguments.length == 0) {
+    	throw Error("Invalid number of arguments given.")
     }
-  if (arguments.length > 0) {
-      var re = this.string;
-      var exclude = '[^'
-      for (var i = 0; i < arguments.length; i++) {
-          exclude = exclude + arguments[i]
-      }
+  	if (arguments.length > 0) {
+		var re = this.string;
+		var exclude = '[^'
+		for (var i = 0; i < arguments.length; i++) {
+			if (arguments[i].constructor === rhs)
+				exclude = exclude + arguments[i].string
+			else if (typeof arguments[i] === "string")
+				exclude = exclude + arguments[i];
+			else
+				throw new Error("Invalid arguments (arg "+(i+1)+") to rhs.not()");
+}
       return new rhs(this.string + exclude + ']')
    }
 }
@@ -327,8 +312,8 @@ rhs.union = function union() {
 /*
 * The intersect function takes in two regular expressions re1, re2 and returns a regular expression that matches the
 * set of strings matched by both re1 and re2.
-* First, the regular expressions are converted to automatons which are handled in automata.js for converting from regular expression
-* Second this AST is converted back to regular expression using rhs.ASTtoRE()
+* First, the regular expressions are converted to automata which are handled in automata.js for converting from regular expression
+* Second this automaton is converted back to regular expression using automata.toRE()
 */
 rhs.intersect = function intersect(re1, re2) {
 	if (re1.constructor === rhs)
@@ -338,10 +323,16 @@ rhs.intersect = function intersect(re1, re2) {
 	return new rhs(automata.intersect(automata.fromRE(re1), automata.fromRE(re2)).toRE());
 }
 
-//rhs.prototype.complement = function complement(){
-	//this = 
-	//return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
-//}
+rhs.prototype.complement = function complement(){
+	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
+}
+
+rhs.complement = function complement(re){
+	if (re1.constructor === rhs)
+		return re.complement();
+	else if (typeof re === "string")
+		return new rhs(re).complement();
+}
 
 /*
 *	Helper functions:
