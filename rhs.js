@@ -317,8 +317,14 @@ rhs.intersect = function intersect(re1, re2) {
 }
 
 rhs.prototype.complement = function complement(){
-	this = 
 	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
+}
+
+rhs.complement = function complement(re){
+	if (re1.constructor === rhs)
+		return re.complement();
+	else if (typeof re === "string")
+		return new rhs(re).complement();
 }
 
 /*
