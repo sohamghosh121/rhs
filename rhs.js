@@ -21,6 +21,9 @@ function rhs(string) {
 		- IP address
 */
 rhs.alphabet = new rhs("[a-zA-Z]");
+rhs.lower = new rhs("[a-z]");
+rhs.upper = new rhs("[A-Z]");
+rhs.name = new rhs("[a-z0-9]");
 rhs.email = new rhs("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?");
 rhs.mastercard = new rhs("5[1-5][0-9]{14}");
 rhs.ipaddress = new rhs("(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])");
@@ -42,6 +45,7 @@ rhs.octal = new rhs("\O");
 *		- single: R{1}
 */
 rhs.prototype.concat = function concat()  {
+  console.log(arguments)
 	if (arguments.length == 0) {
 		throw Error("No arguments passed");
 	}
@@ -50,9 +54,10 @@ rhs.prototype.concat = function concat()  {
       re = new rhs("");
   }
 	for (var i = 0; i < arguments.length; i++) {
-		if (typeof arguments[i] === "string")
+		if (typeof arguments[i] === "string") {
 			re = new rhs(re.string + arguments[i]);
-		else if (arguments[i].constructor === rhs) {
+    }
+		else if (arguments[i] && arguments[i].constructor && arguments[i].constructor === rhs) {
 			re = new rhs(re.string + arguments[i].string);
 		}
 		else {
@@ -61,7 +66,6 @@ rhs.prototype.concat = function concat()  {
 	}
 	return re;
 }
-
 rhs.concat = rhs.prototype.concat;
 
 rhs.prototype.alter = function alter()  {
@@ -148,12 +152,30 @@ rhs.prototype.single = function single() {
 }
 rhs.single = rhs.prototype.single;
 
-rhs.prototype.pivot = function pivot(string) {
-  if (arguments.length !== 1) {
-      throw Error("Invalid number of arguments given.")
-  } else {
-      return new rhs(this.string + string + this.string)
-  }
+rhs.prototype.pivot = function pivot(string1, string2) {
+  console.log(typeof this)
+  if (typeof this === 'object') {
+      if (arguments.length !== 1) {
+          throw Error("Invalid number of arguments given.")
+      } else {
+          return new rhs(this.string + string + this.string)
+      }
+    }
+   else {
+      if (arguments.length !== 2) {
+          throw Error("Invalid number of arguments given.")
+      } else {
+          if (typeof(string1) === 'string' && typeof(string2) === 'string') {
+              return new rhs(string1 + string2 + string1);
+          } else if (typeof(string1) === 'string') {
+              return new rhs(string1 + string2.string + string1);
+          } else if (typeof(string2) === 'string') {
+              return new rhs(string1.string + string2 + string1.string);
+          } else {
+              return new rhs(string1.string + string2.string + string1.string);
+        }
+   }
+}
 }
 rhs.pivot = rhs.prototype.pivot;
 
@@ -316,10 +338,10 @@ rhs.intersect = function intersect(re1, re2) {
 	return new rhs(automata.intersect(automata.fromRE(re1), automata.fromRE(re2)).toRE());
 }
 
-rhs.prototype.complement = function complement(){
-	this = 
-	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
-}
+//rhs.prototype.complement = function complement(){
+	//this = 
+	//return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
+//}
 
 /*
 *	Helper functions:
@@ -451,9 +473,6 @@ rhs.prototype.compose = function compose(f) {
     return fn;
 };
 rhs.compose = rhs.prototype.compose
-
-
-
 
 // Allows users to import rhs code
 if (typeof(module)!== 'undefined') {
