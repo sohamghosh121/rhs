@@ -1,7 +1,7 @@
 var REtoAST = require('./REtoAST.js');
 require('./ArrayLibrary.js')
 
-var alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split("");
+var alphabet = 'abcdefg'.split("");
 var special = ['\t','\r','\n','\v','\f'];
 var epsilon = '';
 
@@ -494,7 +494,7 @@ automata.prototype.toRE = function(){
 			branches.push("("+character+")");
 	}
 		
-	branches = branches.sort(function(a,b){ console.log(a.length); return b.length - a.length;});
+	branches = branches.sort(function(a,b){return b.length - a.length;});
 	var re = branches.join("|");
 	if (re === "") //no transitions from start -> final (no valid regular expression)
 		return null;
