@@ -36,6 +36,7 @@ rhs.word =  new rhs("\w");
 rhs.notword = new rhs("\W");
 rhs.octal = new rhs("\O");
 
+
 /*
 *	Common regular expression operators:
 *		- concat: R.R
@@ -155,6 +156,7 @@ rhs.prototype.pivot = function pivot(string1, string2) {
           } else {
               return new rhs(string1.string + string2.string + string1.string);
         }
+    }
    }
 }
 rhs.pivot = rhs.prototype.pivot;
@@ -328,7 +330,7 @@ rhs.prototype.complement = function complement(){
 }
 
 rhs.complement = function complement(re){
-	if (re1.constructor === rhs)
+	if (re.constructor === rhs)
 		return re.complement();
 	else if (typeof re === "string")
 		return new rhs(re).complement();
@@ -469,5 +471,5 @@ rhs.compose = rhs.prototype.compose
 if (typeof(module)!== 'undefined') {
 	module.exports = {
 		rhs: rhs
-	};
+	}
 }
