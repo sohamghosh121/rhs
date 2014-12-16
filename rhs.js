@@ -134,12 +134,11 @@ rhs.prototype.single = function single() {
 rhs.single = rhs.prototype.single;
 
 rhs.prototype.pivot = function pivot(string1, string2) {
-  console.log(typeof this)
   if (typeof this === 'object') {
       if (arguments.length !== 1) {
           throw Error("Invalid number of arguments given.")
       } else {
-          return new rhs(this.string + string + this.string)
+          return new rhs(this.string + string1 + this.string)
       }
     }
    else {
