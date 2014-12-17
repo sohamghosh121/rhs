@@ -4,3 +4,4 @@ if (typeof(module) !== 'undefined') {
 }
 
 
+console.log(new rhs("ab").repeat(0,Infinity))

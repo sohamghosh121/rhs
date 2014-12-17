@@ -85,7 +85,7 @@ rhs.prototype.repeat = function repeat(from, to) {
 			if (from == 0 && to == 1)
 				return new rhs(this.string + "?");
 			else
-				return new rhs(this.string + "{" + from + "}");
+				return new rhs(this.string + "{" + from + "," + to + "}");
 	}
 }
 
