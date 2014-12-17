@@ -1,7 +1,7 @@
 var REtoAST = require('./REtoAST.js');
 require('./ArrayLibrary.js')
 
-var alphabet = 'abcdefg'.split("");
+var alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split("");
 var special = ['\t','\r','\n','\v','\f'];
 var epsilon = '';
 

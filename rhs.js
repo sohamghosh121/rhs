@@ -4,38 +4,12 @@ require('./ArrayLibrary.js')
 
 function rhs(string) {
     this.version = "1.0.0";
-    this.exp = new RegExp(string);
     if (arguments.length === 0) {
         this.string = '';
     } else {
         this.string = string;
     }
 }
-
-/*
-	Regular Expression built in primitives that a user might use frequently:
-	E.g.
-		- Email
-		- HTML tag
-		- Phone number
-		- IP address
-*/
-rhs.alphabet = new rhs("[a-zA-Z]");
-rhs.lower = new rhs("[a-z]");
-rhs.upper = new rhs("[A-Z]");
-rhs.name = new rhs("[a-z0-9]");
-rhs.email = new rhs("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?");
-rhs.mastercard = new rhs("5[1-5][0-9]{14}");
-rhs.ipaddress = new rhs("(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9])\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[1-9]|0)\.(25[0-5]|2[0-4][0-9]|[0-1]{1}[0-9]{2}|[1-9]{1}[0-9]{1}|[0-9])");
-rhs.control = new rhs("\c");
-rhs.whitespace = new rhs("\s");
-rhs.notwhitespace = new rhs("\S");
-rhs.digit = new rhs("[0-9]");
-rhs.notdigit = new rhs("\D");
-rhs.word =  new rhs("\w");
-rhs.notword = new rhs("\W");
-rhs.octal = new rhs("\O");
-
 
 /*
 *	Common regular expression operators:
@@ -244,22 +218,26 @@ rhs.prototype.validate = function() {
  * and then call on the JavaScript regular expression methods.
  */
 rhs.prototype.exec = function(string) {
-  return this.exp.exec(string)
+  var exp = new RegExp(exp);
+  return exp.exec(string)
 }
 rhs.exec = rhs.prototype.exec
 
 rhs.prototype.test = function(string) {
-  return this.exp.test(string)
+  var exp = new RegExp(exp)
+  return exp.test(string)
 }
 rhs.test = rhs.prototype.test
 
 rhs.prototype.match = function(string) {
-  return string.match(this.exp)
+  var exp = new RegExp(exp)
+  return string.match(exp)
 }
 rhs.match = rhs.prototype.match
 
 rhs.prototype.search = function(string) {
-  return string.search(this.exp)
+  var exp = new RegExp(exp)
+  return string.search(exp)
 }
 rhs.search = rhs.prototype.search
 
@@ -269,7 +247,8 @@ rhs.prototype.replace = function(string, replaceString) {
 rhs.replace = rhs.prototype.replace
 
 rhs.prototype.split = function(string) {
-	return string.split(this.exp);
+  var exp = new RegExp(exp)
+	return string.split(exp);
 }
 rhs.split = rhs.prototype.split
 
@@ -282,7 +261,6 @@ rhs.union = function union() {
     if (arguments.length == 0 || arguments.length == 1) {
 	throw "Need at least 2 arguments";
     }
-
     var re = ""
     var list = []
 
@@ -316,15 +294,27 @@ rhs.union = function union() {
 * Second this automaton is converted back to regular expression using automata.toRE()
 */
 rhs.intersect = function intersect(re1, re2) {
-	if (re1.constructor === rhs)
-		re1 = re1.string;
-	if (re2.constructor === rhs)
-		re2 = re2.string;
-	return new rhs(automata.intersect(automata.fromRE(re1), automata.fromRE(re2)).toRE());
+	if (typeof re1 === "string")
+		re1 = new rhs(re1);
+	if (typeof re2 === "string")
+		re2 = new rhs(re2);
+  var result = new rhs();
+  if (typeof re1.automata === "undefined")
+    re1.automata = automata.fromRE(re1.string);
+  if (typeof re2.automata === "undefined")
+    re2.automata = automata.fromRE(re2.string);
+  result.automata = automata.intersect(re1.automata, re2.automata);
+  result.string = result.automata.toRE();
+	return result;
 }
 
 rhs.prototype.complement = function complement(){
-	return new rhs(automata.complement(automata.fromRE(this.string)).toRE());
+  var result = new rhs();
+  if (typeof this.automata === "undefined")
+    this.automata = automata.fromRE(this.string);
+  result.automata = automata.complement(this.automata);
+  result.string = result.automata.toRE();
+	return result;
 }
 
 rhs.complement = function complement(re){
@@ -381,7 +371,6 @@ rhs.prototype.compose = function compose(f) {
             var queueSize = queue.length;
             var args = Array.prototype.slice.call(arguments);
             if (args.length === 1 && args instanceof Array && args[0] instanceof Array) {
-                console.log(args)
                 args = args[0]
                 arguments.length = args.length
             }

@@ -15,18 +15,22 @@ console.log("------------\n");
 
 console.log("A n B");
 a = new rhs("[a-e]*fg");
-b = new rhs("[c-f]+fg");
+b = new rhs("bfg");
+//c = rhs.intersect(a, b);
+//c.automata.printDigraph()
 console.log(rhs.intersect(a, b).toString());
 console.log("------------\n");
 
-console.log("A n B'");
-a = new rhs("a")
-b = new rhs("[d-f]")
-//console.log(rhs.intersect(a, rhs.complement(b)).toString());
+console.log("A n B\'");
+a = new rhs("ab")
+b = new rhs("[d-f]*")
+console.log(rhs.intersect(a, rhs.complement(b)).toString());
 console.log("------------\n");
 
 console.log("B\'\'")
 b = new rhs("[b-d]")
-//console.log(rhs.complement(rhs.complement(b)).toString())
-console.log(automata.complement(automata.complement(automata.fromRE("[b-z]"))).toRE());
+c = rhs.complement(rhs.complement("abc"))
+console.log(c.toString())
+
+//console.log(automata.complement(automata.complement(automata.fromRE("[b-z]"))).toRE());
 console.log("------------\n");
